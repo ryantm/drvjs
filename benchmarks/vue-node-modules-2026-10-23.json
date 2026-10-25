@@ -1,0 +1,364 @@
+{
+  "date": "2026-10-23",
+  "project": "vuejs/core",
+  "revision": "5a8aa0b2ba575e098cbb63b396e9bcb751eb3a0f",
+  "selection": "@vue/compiler-sfc with workspace dependency closure",
+  "selected_workspaces": 5,
+  "tarballs": 108,
+  "installed_registry_packages": 98,
+  "environment": {
+    "platform": "x86_64-linux",
+    "cpu": "Intel Core i7-1280P",
+    "logical_cpus": 20,
+    "nix": "Determinate Nix 3.24.0 / Nix 2.35.3",
+    "pnpm": "10.34.5",
+    "max_jobs": 4,
+    "cores": 2
+  },
+  "methodology": [
+    "Three sequential trials per scenario. Times use Python time.perf_counter around successful CLI subprocesses.",
+    "Build times include Nix evaluation, realization, installation and store registration; export is measured separately.",
+    "Nix/Rust/Node/pnpm build tools and their dependencies were already realized. Bootstrap/setup costs excluded.",
+    "Fresh-download trials use unique fixed-output derivation names to force 108 npm tarball downloads per trial without deleting existing cached paths. Binary substituters disabled.",
+    "Fresh assembly trials add a unique inert derivation attribute and use cached tarballs, forcing new output construction.",
+    "Forced reconstruction uses nix-build --check and includes Nix comparison of rebuilt output with existing output.",
+    "Cached trials reuse an already-realized output and do not reconstruct node_modules.",
+    "No machine isolation or OS cache flush. The 5.85-second first --check trial is retained."
+  ],
+  "source_sha256": {
+    "src/assemble.rs": "2d82d0c445d0d7c295d7350cf1d77b5b34cdffae0d7c22e6fdee832ebe7d42e3",
+    "src/main.rs": "a2a69f5d1a5705936799fa30303bb4b1d9cf6cf873c92944949a9160c492c63a",
+    "src/plan.rs": "e1806b11d92201048cf33624b947d0d845425df5a43e142e8483f9bf286c3d47",
+    "src/verify.rs": "0c30f21ce56e071f9d3d1f125eebdfe1ea3b482209ec784e81a59a6046ce9e55",
+    "src/workspace.rs": "14ce591a9879fc329548ec899277aa4542a20d79d136a268b0058e170bf9bd50"
+  },
+  "summary": {
+    "cached": {
+      "median_seconds": 0.3699840430635959,
+      "min_seconds": 0.3615084979683161,
+      "max_seconds": 0.3799308161251247
+    },
+    "export": {
+      "median_seconds": 0.016393702942878008,
+      "min_seconds": 0.01629609684459865,
+      "max_seconds": 0.02487914590165019
+    },
+    "forced_reconstruction": {
+      "median_seconds": 2.0919032669626176,
+      "min_seconds": 2.077660904964432,
+      "max_seconds": 5.84613520395942
+    },
+    "fresh_assembly_cached_tarballs": {
+      "median_seconds": 2.120930955046788,
+      "min_seconds": 2.0979980940464884,
+      "max_seconds": 2.1457190620712936
+    },
+    "fresh_downloads_and_assembly": {
+      "median_seconds": 9.753628669073805,
+      "min_seconds": 9.71758098481223,
+      "max_seconds": 10.012868806021288
+    }
+  },
+  "trials": [
+    {
+      "scenario": "export",
+      "trial": 1,
+      "seconds": 0.02487914590165019,
+      "returncode": 0,
+      "downloads": 0,
+      "command": [
+        "/nix/store/pwi52cjqblampczbh2isw7403sh666xc-drvjs-0.1.0/bin/drvjs",
+        "export",
+        "-C",
+        "/tmp/drvjs-vue-core",
+        "--filter",
+        "@vue/compiler-sfc",
+        "-o",
+        "/tmp/drvjs-timing/export-1"
+      ],
+      "output": "Exported 5 workspace importers and 108 package fetches to /tmp/drvjs-timing/export-1"
+    },
+    {
+      "scenario": "cached",
+      "trial": 1,
+      "seconds": 0.3799308161251247,
+      "returncode": 0,
+      "downloads": 0,
+      "command": [
+        "nix-build",
+        "/tmp/drvjs-timing/export-1",
+        "--no-out-link",
+        "--option",
+        "substituters",
+        "",
+        "--max-jobs",
+        "4",
+        "--cores",
+        "2"
+      ],
+      "output": "/nix/store/163ql6gvkc6z4w7ir1xycb5q0fs7makz-drvjs-node-modules"
+    },
+    {
+      "scenario": "fresh_assembly_cached_tarballs",
+      "trial": 1,
+      "seconds": 2.0979980940464884,
+      "returncode": 0,
+      "downloads": 0,
+      "command": [
+        "nix-build",
+        "--expr",
+        "(import /tmp/drvjs-timing/baseline {}).overrideAttrs (_: { drvjsBenchmarkTrial = \"warm-1\"; })",
+        "--no-out-link",
+        "--option",
+        "substituters",
+        "",
+        "--max-jobs",
+        "4",
+        "--cores",
+        "2"
+      ],
+      "output": "/nix/store/55z621w5h7lfy7r0i6113x61yp76w865-drvjs-node-modules"
+    },
+    {
+      "scenario": "forced_reconstruction",
+      "trial": 1,
+      "seconds": 5.84613520395942,
+      "returncode": 0,
+      "downloads": 0,
+      "command": [
+        "nix-build",
+        "/tmp/drvjs-timing/baseline",
+        "--check",
+        "--no-out-link",
+        "--option",
+        "substituters",
+        "",
+        "--max-jobs",
+        "4",
+        "--cores",
+        "2"
+      ],
+      "output": "/nix/store/163ql6gvkc6z4w7ir1xycb5q0fs7makz-drvjs-node-modules"
+    },
+    {
+      "scenario": "export",
+      "trial": 2,
+      "seconds": 0.01629609684459865,
+      "returncode": 0,
+      "downloads": 0,
+      "command": [
+        "/nix/store/pwi52cjqblampczbh2isw7403sh666xc-drvjs-0.1.0/bin/drvjs",
+        "export",
+        "-C",
+        "/tmp/drvjs-vue-core",
+        "--filter",
+        "@vue/compiler-sfc",
+        "-o",
+        "/tmp/drvjs-timing/export-2"
+      ],
+      "output": "Exported 5 workspace importers and 108 package fetches to /tmp/drvjs-timing/export-2"
+    },
+    {
+      "scenario": "cached",
+      "trial": 2,
+      "seconds": 0.3615084979683161,
+      "returncode": 0,
+      "downloads": 0,
+      "command": [
+        "nix-build",
+        "/tmp/drvjs-timing/export-2",
+        "--no-out-link",
+        "--option",
+        "substituters",
+        "",
+        "--max-jobs",
+        "4",
+        "--cores",
+        "2"
+      ],
+      "output": "/nix/store/163ql6gvkc6z4w7ir1xycb5q0fs7makz-drvjs-node-modules"
+    },
+    {
+      "scenario": "fresh_assembly_cached_tarballs",
+      "trial": 2,
+      "seconds": 2.120930955046788,
+      "returncode": 0,
+      "downloads": 0,
+      "command": [
+        "nix-build",
+        "--expr",
+        "(import /tmp/drvjs-timing/baseline {}).overrideAttrs (_: { drvjsBenchmarkTrial = \"warm-2\"; })",
+        "--no-out-link",
+        "--option",
+        "substituters",
+        "",
+        "--max-jobs",
+        "4",
+        "--cores",
+        "2"
+      ],
+      "output": "/nix/store/ifm39w3y23bcblk78sjpcy2f322s4fr1-drvjs-node-modules"
+    },
+    {
+      "scenario": "forced_reconstruction",
+      "trial": 2,
+      "seconds": 2.077660904964432,
+      "returncode": 0,
+      "downloads": 0,
+      "command": [
+        "nix-build",
+        "/tmp/drvjs-timing/baseline",
+        "--check",
+        "--no-out-link",
+        "--option",
+        "substituters",
+        "",
+        "--max-jobs",
+        "4",
+        "--cores",
+        "2"
+      ],
+      "output": "/nix/store/163ql6gvkc6z4w7ir1xycb5q0fs7makz-drvjs-node-modules"
+    },
+    {
+      "scenario": "export",
+      "trial": 3,
+      "seconds": 0.016393702942878008,
+      "returncode": 0,
+      "downloads": 0,
+      "command": [
+        "/nix/store/pwi52cjqblampczbh2isw7403sh666xc-drvjs-0.1.0/bin/drvjs",
+        "export",
+        "-C",
+        "/tmp/drvjs-vue-core",
+        "--filter",
+        "@vue/compiler-sfc",
+        "-o",
+        "/tmp/drvjs-timing/export-3"
+      ],
+      "output": "Exported 5 workspace importers and 108 package fetches to /tmp/drvjs-timing/export-3"
+    },
+    {
+      "scenario": "cached",
+      "trial": 3,
+      "seconds": 0.3699840430635959,
+      "returncode": 0,
+      "downloads": 0,
+      "command": [
+        "nix-build",
+        "/tmp/drvjs-timing/export-3",
+        "--no-out-link",
+        "--option",
+        "substituters",
+        "",
+        "--max-jobs",
+        "4",
+        "--cores",
+        "2"
+      ],
+      "output": "/nix/store/163ql6gvkc6z4w7ir1xycb5q0fs7makz-drvjs-node-modules"
+    },
+    {
+      "scenario": "fresh_assembly_cached_tarballs",
+      "trial": 3,
+      "seconds": 2.1457190620712936,
+      "returncode": 0,
+      "downloads": 0,
+      "command": [
+        "nix-build",
+        "--expr",
+        "(import /tmp/drvjs-timing/baseline {}).overrideAttrs (_: { drvjsBenchmarkTrial = \"warm-3\"; })",
+        "--no-out-link",
+        "--option",
+        "substituters",
+        "",
+        "--max-jobs",
+        "4",
+        "--cores",
+        "2"
+      ],
+      "output": "/nix/store/60x3ff0m3wcqdgf87kfd7gqxzi5q2xmi-drvjs-node-modules"
+    },
+    {
+      "scenario": "forced_reconstruction",
+      "trial": 3,
+      "seconds": 2.0919032669626176,
+      "returncode": 0,
+      "downloads": 0,
+      "command": [
+        "nix-build",
+        "/tmp/drvjs-timing/baseline",
+        "--check",
+        "--no-out-link",
+        "--option",
+        "substituters",
+        "",
+        "--max-jobs",
+        "4",
+        "--cores",
+        "2"
+      ],
+      "output": "/nix/store/163ql6gvkc6z4w7ir1xycb5q0fs7makz-drvjs-node-modules"
+    },
+    {
+      "scenario": "fresh_downloads_and_assembly",
+      "trial": 1,
+      "seconds": 10.012868806021288,
+      "returncode": 0,
+      "downloads": 108,
+      "command": [
+        "nix-build",
+        "/tmp/drvjs-timing/cold-1",
+        "--no-out-link",
+        "--option",
+        "substituters",
+        "",
+        "--max-jobs",
+        "4",
+        "--cores",
+        "2"
+      ],
+      "output": "/nix/store/3c09mqq2pgcypjwfr1wgalad8kzpdpzj-drvjs-node-modules"
+    },
+    {
+      "scenario": "fresh_downloads_and_assembly",
+      "trial": 2,
+      "seconds": 9.753628669073805,
+      "returncode": 0,
+      "downloads": 108,
+      "command": [
+        "nix-build",
+        "/tmp/drvjs-timing/cold-2",
+        "--no-out-link",
+        "--option",
+        "substituters",
+        "",
+        "--max-jobs",
+        "4",
+        "--cores",
+        "2"
+      ],
+      "output": "/nix/store/iwg66iklhl5saka1b9xgxlvj7cd4k3xq-drvjs-node-modules"
+    },
+    {
+      "scenario": "fresh_downloads_and_assembly",
+      "trial": 3,
+      "seconds": 9.71758098481223,
+      "returncode": 0,
+      "downloads": 108,
+      "command": [
+        "nix-build",
+        "/tmp/drvjs-timing/cold-3",
+        "--no-out-link",
+        "--option",
+        "substituters",
+        "",
+        "--max-jobs",
+        "4",
+        "--cores",
+        "2"
+      ],
+      "output": "/nix/store/3lfzcy2k9fgxbnx98md079w3ra7bwgi5-drvjs-node-modules"
+    }
+  ]
+}

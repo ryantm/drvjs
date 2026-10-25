@@ -1,0 +1,10 @@
+.devenv*
+!devenv.nix
+!devenv.yaml
+!devenv.lock
+__pycache__/
+target/
+result
+node_modules/
+.pnpm-store/
+export/

@@ -1,0 +1,15 @@
+{
+  "name": "drvjs-configured-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "engines": { "node": ">=22" },
+  "dependencies": { "is-number": "7.0.0", "is-array": "https://registry.npmjs.org/is-array/-/is-array-1.0.1.tgz" },
+  "pnpm": {
+    "overrides": { "is-odd": "3.0.1" },
+    "packageExtensions": { "is-number@7.0.0": { "dependencies": { "has-flag": "4.0.0" } } },
+    "peerDependencyRules": { "ignoreMissing": ["typescript"] },
+    "supportedArchitectures": { "os": ["linux", "current"], "cpu": ["x64", "current"] },
+    "publicHoistPattern": ["has-flag"],
+    "patchedDependencies": { "is-number@7.0.0": "patches/is-number.patch" }
+  }
+}

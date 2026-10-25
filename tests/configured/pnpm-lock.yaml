@@ -1,0 +1,66 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+overrides:
+  is-odd: 3.0.1
+
+packageExtensionsChecksum: sha256-IGymOFI2E+xfQZ25ZvIEUUrnh5ykTSnuBWFAH+N/bkw=
+
+pnpmfileChecksum: sha256-/giG4hMWDM/Dl9i4w1XzDHpdJTUdO6TPlwlXJOK/mGs=
+
+patchedDependencies:
+  is-number@7.0.0:
+    hash: 4fe3bf25d2e2b27c1a25301c8ae94d7d4aecc5bccd5bb27800b0040252778b88
+    path: patches/is-number.patch
+
+importers:
+
+  .:
+    dependencies:
+      is-array:
+        specifier: https://registry.npmjs.org/is-array/-/is-array-1.0.1.tgz
+        version: 1.0.1
+      is-number:
+        specifier: 7.0.0
+        version: 7.0.0(patch_hash=4fe3bf25d2e2b27c1a25301c8ae94d7d4aecc5bccd5bb27800b0040252778b88)
+
+packages:
+
+  has-flag@4.0.0:
+    resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
+    engines: {node: '>=8'}
+
+  is-array@1.0.1:
+    resolution: {integrity: sha512-gxiZ+y/u67AzpeFmAmo4CbtME/bs7J2C++su5zQzvQyaxUqVzkh69DI+jN+KZuSO6JaH6TIIU6M6LhqxMjxEpw==}
+
+  is-number@6.0.0:
+    resolution: {integrity: sha512-Wu1VHeILBK8KAWJUAiSZQX94GmOE45Rg6/538fKwiloUu21KncEkYGPqob2oSZ5mUT73vLGrHQjKw3KMPwfDzg==}
+    engines: {node: '>=0.10.0'}
+
+  is-number@7.0.0:
+    resolution: {integrity: sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9cGvNp6NZWZUBlbGXYxxng==}
+    engines: {node: '>=0.12.0'}
+
+  is-odd@3.0.1:
+    resolution: {integrity: sha512-CQpnWPrDwmP1+SMHXZhtLtJv90yiyVfluGsX5iNCVkrhQtU3TQHsUWPG9wkdk9Lgd5yNpAg9jQEo90CBaXgWMA==}
+    engines: {node: '>=4'}
+
+snapshots:
+
+  has-flag@4.0.0: {}
+
+  is-array@1.0.1: {}
+
+  is-number@6.0.0: {}
+
+  is-number@7.0.0(patch_hash=4fe3bf25d2e2b27c1a25301c8ae94d7d4aecc5bccd5bb27800b0040252778b88):
+    dependencies:
+      has-flag: 4.0.0
+      is-odd: 3.0.1
+
+  is-odd@3.0.1:
+    dependencies:
+      is-number: 6.0.0

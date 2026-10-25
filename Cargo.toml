@@ -1,0 +1,28 @@
+[package]
+name = "drvjs"
+version = "0.1.0"
+edition = "2024"
+license = "CC0-1.0"
+repository = "https://github.com/ryantm/drvjs"
+description = "Package-granular Nix fetching for pnpm projects"
+
+[dependencies]
+libdeflater = "1"
+zstd = { version = "0.13", default-features = false }
+indexmap = "2"
+anyhow = "1"
+base64 = "0.22"
+clap = { version = "4", features = ["derive"] }
+percent-encoding = "2"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml_ng = "0.10"
+sha2 = "0.10"
+tempfile = "3"
+tiny_http = "0.12"
+walkdir = "2"
+url = "2"
+flate2 = "1.1.10"
+tar = "0.4.46"
+node-semver = "2.2.0"
