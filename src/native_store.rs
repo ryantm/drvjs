@@ -453,6 +453,17 @@ pub fn make_executable(path: &Path) -> Result<()> {
     Ok(())
 }
 pub fn patch(root: &Path, target: &Path, declaration: &Value) -> Result<()> {
+    apply_patch(root, target, declaration, None)
+}
+pub fn patch_cached(root: &Path, target: &Path, declaration: &Value, package: &str) -> Result<()> {
+    apply_patch(root, target, declaration, Some(package))
+}
+fn apply_patch(
+    root: &Path,
+    target: &Path,
+    declaration: &Value,
+    cached_package: Option<&str>,
+) -> Result<()> {
     let relative = declaration["path"].as_str().context("patch missing path")?;
     let path = crate::config::safe_file(root, relative)?;
     let text = fs::read_to_string(&path)?.replace("\r\n", "\n");
@@ -472,19 +483,41 @@ pub fn patch(root: &Path, target: &Path, declaration: &Value) -> Result<()> {
             format!("{text}\n")
         },
     )?;
-    let status = Command::new("git")
-        .args([
-            "-c",
-            "core.autocrlf=false",
-            "apply",
-            "--whitespace=nowarn",
-            "--",
-        ])
+    let command = || {
+        let mut command = Command::new("git");
+        command
+            .args(["-c", "core.autocrlf=false", "apply", "--whitespace=nowarn"])
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CEILING_DIRECTORIES", target.parent().unwrap())
+            .current_dir(target);
+        command
+    };
+    if let Some(package) = cached_package {
+        let check = command()
+            .args(["--check", "--"])
+            .arg(prepared.path())
+            .output()
+            .context("checking cached patch preimage")?;
+        if !check.status.success() {
+            let reverse = command()
+                .args(["--reverse", "--check", "--"])
+                .arg(prepared.path())
+                .output()
+                .context("checking whether cached content is already patched")?;
+            let reason = if reverse.status.success() {
+                "content appears already patched"
+            } else {
+                "content does not match the patch preimage"
+            };
+            anyhow::bail!(
+                "incompatible --unpacked-store entry for {package}: {reason} ({relative}). Native patching requires pristine base files, not patched/side-effect files. Rebuild without --unpacked-store using the locked tarballs; optionally retain a new store with --keep-verification-store. The supplied store was not modified."
+            );
+        }
+    }
+    let status = command()
+        .arg("--")
         .arg(prepared.path())
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CEILING_DIRECTORIES", target.parent().unwrap())
-        .current_dir(target)
         .status()
         .context("running git apply")?;
     ensure!(status.success(), "patch failed: {relative}");
@@ -753,6 +786,47 @@ mod tests {
         materialize(&store, &index, &patched, false, false).unwrap();
         fs::write(patched.join("bin.js"), b"patched").unwrap();
         assert_eq!(fs::read(&source).unwrap(), b"#!/usr/bin/env node\n");
+    }
+
+    #[test]
+    fn cached_patch_requires_a_matching_preimage_and_ignores_side_effects() {
+        let root = tempfile::tempdir().unwrap();
+        let cache = root.path().join("cache");
+        let original = save_file(&cache, b"before\n", 0o644).unwrap();
+        let patched = save_file(&cache, b"after\n", 0o644).unwrap();
+        let text =
+            "diff --git a/file b/file\n--- a/file\n+++ b/file\n@@ -1 +1 @@\n-before\n+after\n";
+        fs::write(root.path().join("change.patch"), text).unwrap();
+        let declaration =
+            json!({"path":"change.patch","hash":hex(&Sha256::digest(text.as_bytes()))});
+        let index = json!({"files":{"file":original}, "sideEffects":{"patched":{"added":{"file":patched},"deleted":[]}}});
+        let before_cache = tree(&cache);
+        let target = root.path().join("pristine");
+        materialize(&cache, &index, &target, true, false).unwrap();
+        assert_eq!(fs::read(target.join("file")).unwrap(), b"before\n");
+        patch_cached(root.path(), &target, &declaration, "test@1.0.0").unwrap();
+        assert_eq!(fs::read(target.join("file")).unwrap(), b"after\n");
+        for (label, contents, reason) in [
+            ("already", &b"after\n"[..], "already patched"),
+            (
+                "unrelated",
+                &b"unrelated\n"[..],
+                "does not match the patch preimage",
+            ),
+        ] {
+            let index = json!({"files":{"file":save_file(&cache, contents, 0o644).unwrap()}});
+            let target = root.path().join(label);
+            materialize(&cache, &index, &target, true, false).unwrap();
+            let error = patch_cached(root.path(), &target, &declaration, "test@1.0.0")
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains(reason), "{error}");
+            assert!(error.contains("Rebuild without --unpacked-store"));
+            assert_eq!(fs::read(target.join("file")).unwrap(), contents);
+        }
+        for (path, contents) in before_cache {
+            assert_eq!(fs::read(cache.join(path)).unwrap(), contents.0);
+        }
     }
 
     #[test]

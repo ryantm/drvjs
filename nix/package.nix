@@ -8,6 +8,7 @@ pkgs.rustPlatform.buildRustPackage {
   };
   cargoLock.lockFile = ../Cargo.lock;
   nativeBuildInputs = [ pkgs.makeWrapper ];
+  nativeCheckInputs = [ pkgs.gitMinimal ];
   postInstall = ''
     wrapProgram $out/bin/drvjs --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.pnpm_10 pkgs.nodejs pkgs.curl pkgs.nix pkgs.gitMinimal ]}
   '';

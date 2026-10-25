@@ -131,6 +131,8 @@ pub fn validate_settings(settings: &Value) -> Result<()> {
                 "catalogs",
                 "onlyBuiltDependencies",
                 "ignoredBuiltDependencies",
+                "neverBuiltDependencies",
+                "allowedDeprecatedVersions",
                 "peerDependencyRules",
                 "overrides",
                 "packageExtensions",
@@ -171,6 +173,17 @@ pub fn safe_file(project: &Path, relative: &str) -> Result<std::path::PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn accepts_deprecation_warning_and_never_build_settings() {
+        for settings in [
+            serde_json::json!({"allowedDeprecatedVersions":{"example":"1.0.0"}}),
+            serde_json::json!({"neverBuiltDependencies":["example"]}),
+            serde_json::json!({"allowedDeprecatedVersions":{"example":"1.0.0"},"neverBuiltDependencies":["example"]}),
+        ] {
+            validate_settings(&settings).unwrap();
+        }
+        assert!(validate_settings(&serde_json::json!({"unknownSetting":true})).is_err());
+    }
     #[test]
     fn scopes_and_credentials() {
         let root = tempfile::tempdir().unwrap();

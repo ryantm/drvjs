@@ -110,6 +110,16 @@ not yet equivalent to every pnpm check (notably package-extension configuration
 checksums and engine requirements). Use independent verification before adopting
 it for a new project. The pnpm-backed assembler remains the default.
 
+Root `allowedDeprecatedVersions` and `neverBuiltDependencies` are accepted and
+preserved: native assembly emits no deprecation warnings and runs no lifecycle
+scripts. Frozen validation follows pnpm's dependency-section precedence:
+`optionalDependencies` overrides `dependencies`, which overrides
+`devDependencies`. Shadowed declarations need no separate importer entry; the
+winning declaration must still match the lockfile. Focused regressions for these
+behaviors and store reuse are tested against pnpm 10.6.1 as well as the pinned
+version; native output metadata and independent verification still target the
+pinned pnpm version.
+
 `tests/native.sh` covers tarballs, retained caches, patches, independent offline
 verification, Nix reproducibility, and a failing pnpm stub during native assembly.
 
@@ -320,6 +330,21 @@ packages fail offline rather than triggering downloads; regenerate the seed
 when dependencies require it. Use trusted caches produced with the pinned pnpm
 version and compatible project settings.
 
+Native store reuse reads the base index's `files` map and ignores `sideEffects`
+overlays. The base files must be pristine so that each locked patch can be
+applied once. Before patching cached content, drvjs checks the patch preimage.
+Already-patched or otherwise incompatible content is rejected with the package,
+patch and recovery instructions; patch failures are never treated as success.
+These checks leave the supplied store unchanged. They do not establish why an
+external store's base files differ from the original tarball.
+
+To regenerate a compatible store from the locked downloads:
+
+```sh
+nix-build ./export --arg unpackedStore null --arg keepVerificationStore true -o fresh
+# A later build can use fresh/.pnpm-store as its unpackedStore.
+```
+
 `benchmarks/unpacked-store.py` compares this path with cached tarballs using
 fresh outputs and alternating trials. `tests/unpacked.sh` covers independent
 pnpm verification, patches/hooks, Nix reproducibility, optional retention, and
@@ -363,8 +388,15 @@ PATH="$PWD/result/bin:$PATH" bash tests/vue-workspace.sh
 PATH="$PWD/result/bin:$PATH" bash tests/configured.sh
 PATH="$PWD/result/bin:$PATH" bash tests/unpacked.sh
 PATH="$PWD/result/bin:$PATH" bash tests/native.sh
+PATH="$PWD/result/bin:$PATH" bash tests/native-compat.sh
+PATH="$PWD/result/bin:$PATH" bash tests/native-store-patches.sh
 PATH="$PWD/result/bin:$PATH" python3 tests/registry.py
 ```
+
+Set `PNPM_COMPAT_BIN=/path/to/pnpm-10.6.1/bin/pnpm.cjs` for the two native
+compatibility scripts to exercise that exact release. The store-patch script
+downloads the public `is-number` fixture, checks ordinary pnpm-store reuse, then
+deliberately constructs an incompatible base index and verifies safe rejection.
 
 The smaller integration fixture covers aliases, scoped packages, peer contexts,
 transitive dependencies, CLI shims, platform-specific optional dependencies,

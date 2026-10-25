@@ -200,6 +200,8 @@ fn settings(root: &Path) -> Result<(Value, Value, BTreeMap<String, String>)> {
         "supportedArchitectures",
         "onlyBuiltDependencies",
         "ignoredBuiltDependencies",
+        "neverBuiltDependencies",
+        "allowedDeprecatedVersions",
         "allowUnusedPatches",
         "ignorePatchFailures",
     ] {
@@ -297,6 +299,12 @@ fn override_spec(manifest: &Value, alias: &str, spec: &str, lock: &Value) -> Str
         .map(|(_, v)| v.to_string())
         .unwrap_or_else(|| spec.to_string())
 }
+// pnpm merges declarations in this order; shadowed sections have no importer entry.
+fn dependency_field(manifest: &Value, alias: &str) -> Option<&'static str> {
+    ["optionalDependencies", "dependencies", "devDependencies"]
+        .into_iter()
+        .find(|field| manifest[*field].get(alias).is_some())
+}
 fn validate(root: &Path, lock: &Value) -> Result<()> {
     let (settings, _, _) = settings(root)?;
     let empty = json!({});
@@ -314,8 +322,10 @@ fn validate(root: &Path, lock: &Value) -> Result<()> {
             if let Some(locked) = importer[field].as_object() {
                 for alias in locked.keys() {
                     ensure!(
-                        manifest[field].get(alias).is_some()
-                            || (field == "dependencies"
+                        (manifest[field].get(alias).is_some()
+                            && dependency_field(&manifest, alias) == Some(field))
+                            || (dependency_field(&manifest, alias).is_none()
+                                && field == "dependencies"
                                 && lock["settings"]["autoInstallPeers"]
                                     .as_bool()
                                     .unwrap_or(true)
@@ -326,10 +336,7 @@ fn validate(root: &Path, lock: &Value) -> Result<()> {
             }
             if let Some(deps) = manifest[field].as_object() {
                 for (alias, spec) in deps {
-                    // Optional declarations override regular declarations in pnpm.
-                    if field != "optionalDependencies"
-                        && manifest["optionalDependencies"].get(alias).is_some()
-                    {
+                    if dependency_field(&manifest, alias) != Some(field) {
                         continue;
                     }
                     let actual = importer[field][alias]["specifier"].as_str();
@@ -374,9 +381,20 @@ pub fn assemble(
     let lock: Value = serde_yaml_ng::from_slice(&fs::read(out.join("pnpm-lock.yaml"))?)?;
     validate(&out, &lock)?;
     let (settings, workspace, rc) = settings(&out)?;
-    let snapshot = lock["snapshots"].as_object().context("missing snapshots")?;
+    // Empty and workspace-only v9 lockfiles omit these maps.
+    let empty = json!({});
+    let snapshot = lock
+        .get("snapshots")
+        .unwrap_or(&empty)
+        .as_object()
+        .context("invalid snapshots")?;
+    let package_metadata = lock
+        .get("packages")
+        .unwrap_or(&empty)
+        .as_object()
+        .context("invalid packages")?;
     let mut skipped = BTreeSet::new();
-    for (id, meta) in lock["packages"].as_object().context("missing packages")? {
+    for (id, meta) in package_metadata {
         if !supported(meta, &settings) {
             for s in snapshot.keys().filter(|s| base_id(s) == id) {
                 skipped.insert(s.clone());
@@ -426,9 +444,7 @@ pub fn assemble(
         .filter(|id| !skipped.contains(*id))
         .map(|id| base_id(id))
         .collect();
-    let inputs: Vec<_> = lock["packages"]
-        .as_object()
-        .unwrap()
+    let inputs: Vec<_> = package_metadata
         .iter()
         .filter(|(id, _)| active.contains(id.as_str()))
         .collect();
@@ -570,7 +586,11 @@ pub fn assemble(
             )?;
         }
         if let Some(declaration) = patch {
-            store::patch(&out, dir, declaration)?;
+            if cache != local_store {
+                store::patch_cached(&out, dir, declaration, base)?;
+            } else {
+                store::patch(&out, dir, declaration)?;
+            }
         }
         Ok(())
     })?;
@@ -1066,6 +1086,29 @@ mod tests {
         assert!(shim.contains("exec /bin/node --flag"));
         assert!(shim.contains("../tool/cli.js"));
         assert!(!shim.contains("NODE_PATH"));
+    }
+
+    #[test]
+    fn frozen_validation_uses_dependency_section_precedence() {
+        let root = tempfile::tempdir().unwrap();
+        for spec in ["1.0.0", "workspace:*"] {
+            for winner in ["dependencies", "optionalDependencies"] {
+                let mut manifest = json!({"name":"app", "dependencies":{"example":spec}, "devDependencies":{"example":"shadowed"}});
+                if winner == "optionalDependencies" {
+                    manifest["optionalDependencies"] = json!({"example":spec});
+                    manifest["dependencies"]["example"] = json!("also-shadowed");
+                }
+                store::write_json(&root.path().join("package.json"), &manifest).unwrap();
+                let mut lock = json!({"importers":{".":{winner:{"example":{"specifier":spec,"version":"1.0.0"}}}}});
+                validate(root.path(), &lock).unwrap();
+                lock["importers"]["."][winner]["example"]["specifier"] = json!("stale");
+                assert!(validate(root.path(), &lock).is_err());
+                lock["importers"]["."][winner]["example"]["specifier"] = json!(spec);
+                lock["importers"]["."]["devDependencies"] =
+                    json!({"example":{"specifier":"shadowed","version":"1.0.0"}});
+                assert!(validate(root.path(), &lock).is_err());
+            }
+        }
     }
 
     #[test]
