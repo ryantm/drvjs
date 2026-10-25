@@ -1,0 +1,10 @@
+--- a/src/Cache.ts
++++ b/src/Cache.ts
+@@ -79,6 +79,6 @@
+       return -1;
+     }
+
+-    if (isMatchingKey(keys[0], keyToMatch)) {
++    if (isMatchingKey(keys[0]!, keyToMatch)) {
+       return 0;
+     }

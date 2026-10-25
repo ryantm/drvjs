@@ -353,12 +353,19 @@ when dependencies require it. Use trusted caches produced with the pinned pnpm
 version and compatible project settings.
 
 Native store reuse reads the base index's `files` map and ignores `sideEffects`
-overlays. The base files must be pristine so that each locked patch can be
-applied once. Before patching cached content, drvjs checks the patch preimage.
-Already-patched or otherwise incompatible content is rejected with the package,
-patch and recovery instructions; patch failures are never treated as success.
-These checks leave the supplied store unchanged. They do not establish why an
-external store's base files differ from the original tarball.
+overlays. For both fetched tarballs and cached files, native patching verifies
+the locked patch checksum and checks the entire patch before writing. A matching
+preimage is patched normally. If that fails, a successful whole-patch reverse
+check verifies the complete postimage, which is accepted unchanged; drvjs does
+not actually reverse the patch. This handles registry tarballs that already
+contain a locked patch's changes. Already-applied content alone does not imply
+store contamination.
+
+If neither direction validates, drvjs rejects the partial or incompatible patch
+without applying any hunks. This includes mixtures of applied/unapplied hunks or
+files. Malformed patches and incorrect checksums remain errors. Supplied stores
+are never modified; failures identify the patch and, for cache reuse, the
+package and recovery instructions.
 
 To regenerate a compatible store from the locked downloads:
 
@@ -412,13 +419,19 @@ PATH="$PWD/result/bin:$PATH" bash tests/unpacked.sh
 PATH="$PWD/result/bin:$PATH" bash tests/native.sh
 PATH="$PWD/result/bin:$PATH" bash tests/native-compat.sh
 PATH="$PWD/result/bin:$PATH" bash tests/native-store-patches.sh
+PATH="$PWD/result/bin:$PATH" bash tests/native-already-applied.sh
 PATH="$PWD/result/bin:$PATH" python3 tests/registry.py
 ```
 
-Set `PNPM_COMPAT_BIN=/path/to/pnpm-10.6.1/bin/pnpm.cjs` for the two native
+Set `PNPM_COMPAT_BIN=/path/to/pnpm-10.6.1/bin/pnpm.cjs` for the native
 compatibility scripts to exercise that exact release. The store-patch script
-downloads the public `is-number` fixture, checks ordinary pnpm-store reuse, then
-deliberately constructs an incompatible base index and verifies safe rejection.
+downloads the public `is-number` fixture, checks normal and complete-postimage
+store reuse, then constructs an incompatible base index and verifies rejection.
+The already-applied script tests `micro-memoize@4.0.10` against pnpm, direct
+Nix-fetched tarball assembly, sandboxed Nix builds, pnpm verification and store
+reuse. Its six-line hunk uses matching counts in its header. Unit tests cover
+multi-hunk and multi-file normal, fully applied, partial and incompatible states,
+including rejection before any file changes.
 
 The smaller integration fixture covers aliases, scoped packages, peer contexts,
 transitive dependencies, CLI shims, platform-specific optional dependencies,

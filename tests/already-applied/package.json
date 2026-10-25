@@ -1,0 +1,9 @@
+{
+  "name": "already-applied-patch-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": { "micro-memoize": "4.0.10" },
+  "pnpm": {
+    "patchedDependencies": { "micro-memoize@4.0.10": "patches/already-applied.patch" }
+  }
+}

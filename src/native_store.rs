@@ -493,34 +493,42 @@ fn apply_patch(
             .current_dir(target);
         command
     };
-    if let Some(package) = cached_package {
-        let check = command()
-            .args(["--check", "--"])
+    // Check the entire patch before writing: mixed pre/postimage hunks must not
+    // be mistaken for a fully applied patch. A successful reverse check proves
+    // every hunk already matches its postimage; it never reverses target files.
+    let forward = command()
+        .args(["--check", "--"])
+        .arg(prepared.path())
+        .output()
+        .context("checking patch preimage")?;
+    if forward.status.success() {
+        let status = command()
+            .arg("--")
+            .arg(prepared.path())
+            .status()
+            .context("running git apply")?;
+        ensure!(status.success(), "patch failed: {relative}");
+    } else {
+        let reverse = command()
+            .args(["--reverse", "--check", "--"])
             .arg(prepared.path())
             .output()
-            .context("checking cached patch preimage")?;
-        if !check.status.success() {
-            let reverse = command()
-                .args(["--reverse", "--check", "--"])
-                .arg(prepared.path())
-                .output()
-                .context("checking whether cached content is already patched")?;
-            let reason = if reverse.status.success() {
-                "content appears already patched"
-            } else {
-                "content does not match the patch preimage"
-            };
+            .context("checking complete patch postimage")?;
+        if !reverse.status.success() {
+            let detail = String::from_utf8_lossy(&forward.stderr);
+            if let Some(package) = cached_package {
+                anyhow::bail!(
+                    "incompatible --unpacked-store entry or patch for {package}: neither the complete preimage nor postimage matches ({relative}); content may be partially patched or incompatible. Rebuild without --unpacked-store using the locked tarballs to check the source; optionally retain a new store with --keep-verification-store. The supplied store was not modified. git apply: {}",
+                    detail.trim()
+                );
+            }
             anyhow::bail!(
-                "incompatible --unpacked-store entry for {package}: {reason} ({relative}). Native patching requires pristine base files, not patched/side-effect files. Rebuild without --unpacked-store using the locked tarballs; optionally retain a new store with --keep-verification-store. The supplied store was not modified."
+                "patch failed: {relative}: neither the complete preimage nor postimage matches; content may be partially patched or incompatible. git apply: {}",
+                detail.trim()
             );
         }
+        eprintln!("drvjs: patch already applied: {relative}");
     }
-    let status = command()
-        .arg("--")
-        .arg(prepared.path())
-        .status()
-        .context("running git apply")?;
-    ensure!(status.success(), "patch failed: {relative}");
     for entry in WalkDir::new(target) {
         let e = entry?;
         ensure!(
@@ -789,7 +797,7 @@ mod tests {
     }
 
     #[test]
-    fn cached_patch_requires_a_matching_preimage_and_ignores_side_effects() {
+    fn cached_patch_accepts_preimages_or_postimages_and_ignores_side_effects() {
         let root = tempfile::tempdir().unwrap();
         let cache = root.path().join("cache");
         let original = save_file(&cache, b"before\n", 0o644).unwrap();
@@ -807,26 +815,105 @@ mod tests {
         patch_cached(root.path(), &target, &declaration, "test@1.0.0").unwrap();
         assert_eq!(fs::read(target.join("file")).unwrap(), b"after\n");
         for (label, contents, reason) in [
-            ("already", &b"after\n"[..], "already patched"),
+            ("already", &b"after\n"[..], ""),
             (
                 "unrelated",
                 &b"unrelated\n"[..],
-                "does not match the patch preimage",
+                "neither the complete preimage nor postimage matches",
             ),
         ] {
             let index = json!({"files":{"file":save_file(&cache, contents, 0o644).unwrap()}});
             let target = root.path().join(label);
             materialize(&cache, &index, &target, true, false).unwrap();
-            let error = patch_cached(root.path(), &target, &declaration, "test@1.0.0")
-                .unwrap_err()
-                .to_string();
-            assert!(error.contains(reason), "{error}");
-            assert!(error.contains("Rebuild without --unpacked-store"));
+            let result = patch_cached(root.path(), &target, &declaration, "test@1.0.0");
+            if reason.is_empty() {
+                result.unwrap();
+            } else {
+                let error = result.unwrap_err().to_string();
+                assert!(error.contains(reason), "{error}");
+                assert!(error.contains("Rebuild without --unpacked-store"));
+            }
             assert_eq!(fs::read(target.join("file")).unwrap(), contents);
         }
         for (path, contents) in before_cache {
             assert_eq!(fs::read(cache.join(path)).unwrap(), contents.0);
         }
+    }
+
+    #[test]
+    fn patch_checks_complete_preimages_and_postimages_without_partial_writes() {
+        let root = tempfile::tempdir().unwrap();
+        let original = "A\nbefore-one\nC\nD\nE\nF\nG\nbefore-two\nI\n";
+        let complete = original
+            .replace("before-one", "after-one")
+            .replace("before-two", "after-two");
+        // Both hunks and both files must match a complete preimage or postimage.
+        let text = "diff --git a/file b/file\n--- a/file\n+++ b/file\n@@ -1,3 +1,3 @@\n A\n-before-one\n+after-one\n C\n@@ -7,3 +7,3 @@\n G\n-before-two\n+after-two\n I\ndiff --git a/other b/other\n--- a/other\n+++ b/other\n@@ -1 +1 @@\n-before\n+after\n";
+        fs::write(root.path().join("change.patch"), text).unwrap();
+        let mut declaration =
+            json!({"path":"change.patch", "hash":hex(&Sha256::digest(text.as_bytes()))});
+        for (label, file, other, accepted) in [
+            ("normal", original.to_owned(), "before\n", true),
+            ("already", complete.clone(), "after\n", true),
+            (
+                "partial-hunks",
+                original.replace("before-one", "after-one"),
+                "before\n",
+                false,
+            ),
+            ("partial-files", complete.clone(), "before\n", false),
+            (
+                "incompatible",
+                "unrelated\n".to_owned(),
+                "unrelated\n",
+                false,
+            ),
+        ] {
+            for cached in [false, true] {
+                let target = root.path().join(format!("{label}-{cached}"));
+                fs::create_dir(&target).unwrap();
+                fs::write(target.join("file"), file.as_bytes()).unwrap();
+                fs::write(target.join("other"), other).unwrap();
+                let before = tree(&target);
+                let result = if cached {
+                    patch_cached(root.path(), &target, &declaration, "test@1.0.0")
+                } else {
+                    patch(root.path(), &target, &declaration)
+                };
+                if accepted {
+                    result.unwrap();
+                    assert_eq!(fs::read_to_string(target.join("file")).unwrap(), complete);
+                    assert_eq!(fs::read(target.join("other")).unwrap(), b"after\n");
+                } else {
+                    assert!(
+                        result
+                            .unwrap_err()
+                            .to_string()
+                            .contains("neither the complete preimage nor postimage matches")
+                    );
+                    assert_eq!(tree(&target), before);
+                }
+            }
+        }
+        let malformed = text.replace("@@ -1,3 +1,3 @@", "@@ -1,4 +1,4 @@");
+        fs::write(root.path().join("change.patch"), &malformed).unwrap();
+        declaration["hash"] = json!(hex(&Sha256::digest(malformed.as_bytes())));
+        let target = root.path().join("already-false");
+        let before = tree(&target);
+        assert!(patch(root.path(), &target, &declaration).is_err());
+        assert_eq!(tree(&target), before);
+        fs::write(root.path().join("change.patch"), text).unwrap();
+        // Even a complete postimage cannot bypass the locked patch checksum.
+        declaration["hash"] = json!("wrong");
+        let target = root.path().join("already-false");
+        let before = tree(&target);
+        assert!(
+            patch(root.path(), &target, &declaration)
+                .unwrap_err()
+                .to_string()
+                .contains("checksum differs")
+        );
+        assert_eq!(tree(&target), before);
     }
 
     #[test]

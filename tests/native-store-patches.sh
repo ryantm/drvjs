@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exercise a real pnpm v10 store, then simulate incompatible base-index content.
+# Exercise a real pnpm v10 store, complete postimages and incompatible content.
 set -euo pipefail
 repo=$(cd -- "$(dirname -- "$0")/.." && pwd)
 scratch=$(mktemp -d)
@@ -24,8 +24,7 @@ const assert = require('node:assert/strict');
 assert.equal(require(`${process.argv[2]}/node_modules/is-number/package.json`).drvjsPatched, true);
 assert.equal(require(`${process.argv[2]}/node_modules/is-number`)('42'), true);
 JS
-# This intentionally models a store whose base index already names patched bytes.
-# It is not a claim that ordinary pnpm writes such an index.
+# A base index can legitimately name bytes matching the complete patch postimage.
 node - "$scratch" <<'JS'
 const fs = require('node:fs');
 const path = require('node:path');
@@ -50,12 +49,7 @@ index.files['package.json'] = {...index.files['package.json'], integrity: `sha51
 fs.writeFileSync(indexPath, JSON.stringify(index));
 fs.writeFileSync(path.join(root, 'before.json'), JSON.stringify({indexPath, content, index: fs.readFileSync(indexPath, 'base64'), bytes: bytes.toString('base64')}));
 JS
-if drvjs assemble --native "$scratch/export/project" "$scratch/incompatible" "$scratch/empty.json" --unpacked-store "$scratch/store" > "$scratch/incompatible.log" 2>&1; then
-    echo 'FAIL: accepted already-patched base-index content' >&2; exit 1
-fi
-grep -q 'incompatible --unpacked-store entry' "$scratch/incompatible.log"
-grep -q 'already patched' "$scratch/incompatible.log"
-grep -q 'Rebuild without --unpacked-store' "$scratch/incompatible.log"
+drvjs assemble --native "$scratch/export/project" "$scratch/already" "$scratch/empty.json" --unpacked-store "$scratch/store"
 node - "$scratch/before.json" <<'JS'
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
@@ -63,4 +57,37 @@ const before = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 assert.equal(fs.readFileSync(before.indexPath, 'base64'), before.index);
 assert.equal(fs.readFileSync(before.content, 'base64'), before.bytes);
 JS
-echo 'PASS: real pnpm store patching, already-patched base rejection, actionable recovery, supplied store unchanged'
+# Now make a genuinely incompatible, but individually integrity-valid, entry.
+node - "$scratch" <<'JS'
+const fs = require('node:fs');
+const crypto = require('node:crypto');
+const path = require('node:path');
+const root = process.argv[2];
+const before = JSON.parse(fs.readFileSync(path.join(root, 'before.json'), 'utf8'));
+const index = JSON.parse(fs.readFileSync(before.indexPath, 'utf8'));
+const manifest = JSON.parse(fs.readFileSync(before.content, 'utf8'));
+manifest.description = 'A different source, incompatible with the patch context';
+const bytes = Buffer.from(JSON.stringify(manifest, null, 2) + '\n');
+const digest = crypto.createHash('sha512').update(bytes).digest();
+const hex = digest.toString('hex');
+const content = path.join(root, 'store/v10/files', hex.slice(0, 2), hex.slice(2));
+fs.mkdirSync(path.dirname(content), {recursive: true});
+fs.writeFileSync(content, bytes);
+index.files['package.json'] = {...index.files['package.json'], integrity: `sha512-${digest.toString('base64')}`, size: bytes.length};
+fs.writeFileSync(before.indexPath, JSON.stringify(index));
+fs.writeFileSync(path.join(root, 'incompatible-before.json'), JSON.stringify({indexPath: before.indexPath, content, index: fs.readFileSync(before.indexPath, 'base64'), bytes: bytes.toString('base64')}));
+JS
+if drvjs assemble --native "$scratch/export/project" "$scratch/incompatible" "$scratch/empty.json" --unpacked-store "$scratch/store" > "$scratch/incompatible.log" 2>&1; then
+    echo 'FAIL: accepted incompatible base-index content' >&2; exit 1
+fi
+grep -q 'incompatible --unpacked-store entry or patch' "$scratch/incompatible.log"
+grep -q 'neither the complete preimage nor postimage matches' "$scratch/incompatible.log"
+grep -q 'Rebuild without --unpacked-store' "$scratch/incompatible.log"
+node - "$scratch/incompatible-before.json" <<'JS'
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const before = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+assert.equal(fs.readFileSync(before.indexPath, 'base64'), before.index);
+assert.equal(fs.readFileSync(before.content, 'base64'), before.bytes);
+JS
+echo 'PASS: real pnpm store patching, complete postimage acceptance, incompatible-content rejection, supplied store unchanged'
