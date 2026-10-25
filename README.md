@@ -61,6 +61,28 @@ Exports include the Rust helper's source, Cargo.lock, the projected project,
 and pinned Nix expressions. They do not reference the original checkout. No
 IFD, dynamic derivations, or recursive Nix are required.
 
+## Nix flake distribution
+
+Versioned releases are published to
+[FlakeHub](https://flakehub.com/flake/ryantm/drvjs) and
+[Flakestry](https://flakestry.dev/flake/github/ryantm/drvjs).
+To consume a release as an input:
+
+```nix
+inputs.drvjs.url = "https://flakehub.com/f/ryantm/drvjs/0.1.0.tar.gz";
+# GitHub is also supported:
+# inputs.drvjs.url = "github:ryantm/drvjs/v0.1.0";
+```
+
+Use `drvjs.packages.${system}.default` or `drvjs.packages.${system}.drvjs`.
+Outputs are declared for `x86_64-linux` and `aarch64-linux`; ARM64 has not yet
+been validated by the integration suite.
+
+Maintainers publish a new version by pushing a `v*.*.*` tag. The
+[publication workflow](.github/workflows/publish.yml) checks the flake before
+publishing to both registries. It can also retry an existing tag through
+`workflow_dispatch`.
+
 ## Experimental native assembly
 
 `--native` selects the Rust assembler. It reads the projected lockfile, verifies
