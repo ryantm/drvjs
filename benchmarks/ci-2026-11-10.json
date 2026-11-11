@@ -1,0 +1,2297 @@
+{
+  "date": "2026-11-10",
+  "baseline_commit": "0ed94385e5884fdd6ccd618f9a833f55dc4a2ee3",
+  "baseline_package": "/nix/store/5mjwwlwd84hqljz8z5hrv20b99lcbky2-drvjs-0.1.0",
+  "optimized_package": "/nix/store/5dzzdk8l64j4d86fn4ss6ffnl0dxm800-drvjs-0.1.0",
+  "optimized_source_sha256": {
+    "Cargo.toml": "b1be9ed992b5200aebd0faea86a9fca9c54075bcf26b794119ebe50368cbcab7",
+    "Cargo.lock": "07a4ec90f97ef643e7c3c5a789756ab3a40e37199b1159af07349c91c1727fcd",
+    "src/config.rs": "279899aa8055b537fbb0342140e646bcd2b5a5da3f58fb703e80588a144055e6",
+    "src/fetch.rs": "dab18498ca7820d8dc6a995d1be7302dcf7e84b44ba71fabab4c1053dcd68ba1",
+    "src/main.rs": "996f478a0e144196d561ebb203308c863c12c1dd707380e7f522c12b66c8d844",
+    "src/native.rs": "62559fe148eff54f23397809b133536ced4df3acd7111e54680795d251ddec95",
+    "src/native_shim.txt": "36577d1ef20cd1286352d3842b55b3a14d786b2f0ac0128ab4c26c26d0e3026d",
+    "src/native_store.rs": "6c9d6ab54fe1e84e795dae4250dc5bbc51aab9303da1203e4cc023503822b030",
+    "src/plan.rs": "5bf82905360c2f9a0686f93b1687bb3593c4bd6ad7a89b6962ae4ab1efb48735",
+    "src/pnpm.rs": "43735853146f7706a9aa219cfa5fff6adca95ae41663f2cf5de779ed61633094",
+    "src/verify.rs": "153ddbb27143cb5e11f9995c465b0fa92e49d256c91b5d4e108f8db85a942165",
+    "src/workspace.rs": "e422b16acee4f3799159284c529f43690a4678ed321b17972316564ff9dbc38d",
+    "nix/build.nix": "b704c75247105e91a83fe407cc85ed7236c2cb8d7fa6f7a05cf8257a1b38f2fd",
+    "nix/package.nix": "f11c0531bc0b60f393b43e09d508f20338c1ee4f654f39cbd6412177241866d9"
+  },
+  "environment": {
+    "platform": "x86_64-linux",
+    "cpu": "Intel Core i7-1280P",
+    "logical_cpus": 20,
+    "nix": "nix (Determinate Nix 3.24.1) 2.35.3",
+    "rust": "1.97.1",
+    "pnpm": "10.34.5",
+    "node": "24.19.0",
+    "assembly_cores": 4
+  },
+  "project": {
+    "repository": "https://github.com/vuejs/core",
+    "revision": "5a8aa0b2ba575e098cbb63b396e9bcb751eb3a0f",
+    "tag": "v3.5.22",
+    "full_tarballs": 741,
+    "subset": "@vue/compiler-sfc",
+    "subset_tarballs": 108,
+    "subset_installed_instances": 98,
+    "subset_workspaces": 5,
+    "subset_importers_including_synthetic_root": 6
+  },
+  "iets": {
+    "pull_request": "https://github.com/replit/iets/pull/3",
+    "revision": "69883a64bfb0d9a95dce253dae304878e07b076e",
+    "version": "0.2.0",
+    "binary": "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+    "fallback": "never",
+    "tracing_cache": false,
+    "ifd": false
+  },
+  "methodology": [
+    "Five alternating trials per evaluator/implementation. No other task builds or tests ran concurrently. Wall times use Python time.monotonic.",
+    "Evaluation forces drvPath and the full fetch dependency graph. Every evaluator/case is warmed once. No IFD or builds; OS page cache and iets compiled-file cache remain warm. iets tracing-cache reuse and fallback to Nix are disabled.",
+    "Direct assembly uses identical realized archives and project sources, fresh output directories, NIX_BUILD_CORES=4 and DRVJS_JOBS=4. Excludes export, evaluation, downloads, NAR registration and cleanup.",
+    "The default comparison uses the previous pnpm default and the new native default. The native comparison explicitly passes --native to the old binary; the core native assembler has essentially unchanged speed.",
+    "Nix rebuilds warm both inputs first, then time nix-build --check with --max-jobs 4 --cores 4. Includes evaluation, assembly, daemon and NAR-check overhead; excludes export, downloads, helper compilation. Both outputs pass every reproducibility check.",
+    "Closure counts include required input outputs and their runtime closures, the selected project and archives. Excludes the compiler used to build drvjs. Compressed bytes are sums of FileSize from a fresh local Nix binary cache using zstd level 3; no remote latency measurement.",
+    "No package contents were pruned. Installed output size is essentially unchanged. All 741 full-workspace fixed-output archive paths match the baseline.",
+    "The full Vue workspace was evaluated but not installed; assembly and closure measurements use the compiler-sfc subset. ARM64 was not tested."
+  ],
+  "evaluation": {
+    "fixture": {
+      "derivations": {
+        "before": "/nix/store/1jgc7xw3iyaa02shs4v3gckhq0nq266x-drvjs-node-modules.drv",
+        "after": "/nix/store/xgp9b3lrl8p3a9l1md2rbhb50jfgpff6-drvjs-node-modules.drv"
+      },
+      "samples": [
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 0,
+          "seconds": 0.40600134001579136,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 0,
+          "seconds": 0.32240441301837564,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 0,
+          "seconds": 0.19638878293335438,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 0,
+          "seconds": 0.12103788100648671,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 0,
+          "seconds": 0.10319277795497328,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 0,
+          "seconds": 0.07643183798063546,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 1,
+          "seconds": 0.3453333389479667,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 1,
+          "seconds": 0.4028123520547524,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 1,
+          "seconds": 0.12085096398368478,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 1,
+          "seconds": 0.1994864649605006,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 1,
+          "seconds": 0.07823399803601205,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 1,
+          "seconds": 0.10412370099220425,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 2,
+          "seconds": 0.40433386503718793,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 2,
+          "seconds": 0.32542057300452143,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 2,
+          "seconds": 0.19732767902314663,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 2,
+          "seconds": 0.12211147008929402,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 2,
+          "seconds": 0.11394260497763753,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 2,
+          "seconds": 0.07741890801116824,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 3,
+          "seconds": 0.33730422996450216,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 3,
+          "seconds": 0.4152126159751788,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 3,
+          "seconds": 0.1221077450318262,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 3,
+          "seconds": 0.19900796504225582,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 3,
+          "seconds": 0.07976970996242017,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 3,
+          "seconds": 0.10352674801833928,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 4,
+          "seconds": 0.4152034840080887,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 4,
+          "seconds": 0.3438718229299411,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 4,
+          "seconds": 0.19840239197947085,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 4,
+          "seconds": 0.12133200804237276,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 4,
+          "seconds": 0.10307800897862762,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-fixture-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 4,
+          "seconds": 0.07854017894715071,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-fixture {}).drvPath"
+          ]
+        }
+      ],
+      "medians": {
+        "nix": {
+          "before": 0.40600134001579136,
+          "after": 0.33730422996450216
+        },
+        "iets-1": {
+          "before": 0.19840239197947085,
+          "after": 0.12133200804237276
+        },
+        "iets-4": {
+          "before": 0.10352674801833928,
+          "after": 0.07823399803601205
+        }
+      }
+    },
+    "vue": {
+      "derivations": {
+        "before": "/nix/store/mvachckn8787nb5zzxfk73m6z4b348n1-drvjs-node-modules.drv",
+        "after": "/nix/store/d3kz7c6qldr83n7lik3s8cmsxck8yzcp-drvjs-node-modules.drv"
+      },
+      "samples": [
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 0,
+          "seconds": 0.4545517209917307,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 0,
+          "seconds": 0.3283868849975988,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 0,
+          "seconds": 0.20287068199831992,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 0,
+          "seconds": 0.1281214370392263,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 0,
+          "seconds": 0.10343294404447079,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 0,
+          "seconds": 0.07772450300399214,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 1,
+          "seconds": 0.3428162429481745,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 1,
+          "seconds": 0.4360955109586939,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 1,
+          "seconds": 0.12552188301924616,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 1,
+          "seconds": 0.2065676909405738,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 1,
+          "seconds": 0.08246831595897675,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 1,
+          "seconds": 0.1065389389405027,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 2,
+          "seconds": 0.43022259301505983,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 2,
+          "seconds": 0.3258543689735234,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 2,
+          "seconds": 0.20885278098285198,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 2,
+          "seconds": 0.12661868601571769,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 2,
+          "seconds": 0.10548547992948443,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 2,
+          "seconds": 0.0794841171009466,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 3,
+          "seconds": 0.3406045330921188,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 3,
+          "seconds": 0.43026550102513283,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 3,
+          "seconds": 0.12572695198468864,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 3,
+          "seconds": 0.2531883289339021,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 3,
+          "seconds": 0.08081366098485887,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 3,
+          "seconds": 0.11426616704557091,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 4,
+          "seconds": 0.4237926339264959,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 4,
+          "seconds": 0.3343241240363568,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 4,
+          "seconds": 0.20430722599849105,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 4,
+          "seconds": 0.12462630297522992,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 4,
+          "seconds": 0.10290666995570064,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 4,
+          "seconds": 0.07840325392317027,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue {}).drvPath"
+          ]
+        }
+      ],
+      "medians": {
+        "nix": {
+          "before": 0.43026550102513283,
+          "after": 0.3343241240363568
+        },
+        "iets-1": {
+          "before": 0.2065676909405738,
+          "after": 0.12572695198468864
+        },
+        "iets-4": {
+          "before": 0.10548547992948443,
+          "after": 0.0794841171009466
+        }
+      }
+    },
+    "vue-full": {
+      "derivations": {
+        "before": "/nix/store/mh1zvj3ncgynhyq13v59zsnasvwjwihy-drvjs-node-modules.drv",
+        "after": "/nix/store/zkaakhjl0bw8k1ym1752z4pf5r9y90az-drvjs-node-modules.drv"
+      },
+      "samples": [
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 0,
+          "seconds": 0.45279570401180536,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 0,
+          "seconds": 0.3481465270742774,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 0,
+          "seconds": 0.22669853910338134,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 0,
+          "seconds": 0.1376757980324328,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 0,
+          "seconds": 0.11265640903729945,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 0,
+          "seconds": 0.08890037704259157,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 1,
+          "seconds": 0.3476889979792759,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 1,
+          "seconds": 0.44296501704957336,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 1,
+          "seconds": 0.13441295106895268,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 1,
+          "seconds": 0.22567804902791977,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 1,
+          "seconds": 0.0835550349438563,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 1,
+          "seconds": 0.11492101103067398,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 2,
+          "seconds": 0.44166785606648773,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 2,
+          "seconds": 0.3415113929659128,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 2,
+          "seconds": 0.22649065090809017,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 2,
+          "seconds": 0.13640888000372797,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 2,
+          "seconds": 0.11253993399441242,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 2,
+          "seconds": 0.08174622897058725,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 3,
+          "seconds": 0.3588284089928493,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 3,
+          "seconds": 0.4538018829189241,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 3,
+          "seconds": 0.1369283669628203,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 3,
+          "seconds": 0.22635135403834283,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 3,
+          "seconds": 0.0811823420226574,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 3,
+          "seconds": 0.11600932909641415,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "before",
+          "trial": 4,
+          "seconds": 0.45122470997739583,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "nix",
+          "mode": "after",
+          "trial": 4,
+          "seconds": 0.3417147359577939,
+          "command": [
+            "nix-instantiate",
+            "--eval",
+            "--strict",
+            "--read-write-mode",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "before",
+          "trial": 4,
+          "seconds": 0.22494183492381126,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-1",
+          "mode": "after",
+          "trial": 4,
+          "seconds": 0.13434810400940478,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "1",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "before",
+          "trial": 4,
+          "seconds": 0.11185112991370261,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-vue-full-before {}).drvPath"
+          ]
+        },
+        {
+          "evaluator": "iets-4",
+          "mode": "after",
+          "trial": 4,
+          "seconds": 0.08499517000745982,
+          "command": [
+            "/nix/store/4adhszix9rn77kn8xn2m5mvbj123lv0p-iets-0.2.0/bin/iets",
+            "eval",
+            "--impure",
+            "--no-tracing-cache",
+            "--workers",
+            "4",
+            "--option",
+            "allow-import-from-derivation",
+            "false",
+            "-E",
+            "(import /tmp/drvjs-ci-final-vue-full {}).drvPath"
+          ]
+        }
+      ],
+      "medians": {
+        "nix": {
+          "before": 0.45122470997739583,
+          "after": 0.3476889979792759
+        },
+        "iets-1": {
+          "before": 0.22635135403834283,
+          "after": 0.13640888000372797
+        },
+        "iets-4": {
+          "before": 0.11265640903729945,
+          "after": 0.0835550349438563
+        }
+      }
+    }
+  },
+  "materialization_defaults": {
+    "samples": [
+      {
+        "mode": "baseline",
+        "trial": 0,
+        "seconds": 1.0663189000915736,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5mjwwlwd84hqljz8z5hrv20b99lcbky2-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-defaults/baseline-1euoxpwi/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "optimized",
+        "trial": 0,
+        "seconds": 0.03947671898640692,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5dzzdk8l64j4d86fn4ss6ffnl0dxm800-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-defaults/optimized-743malys/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "optimized",
+        "trial": 1,
+        "seconds": 0.04252337699290365,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5dzzdk8l64j4d86fn4ss6ffnl0dxm800-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-defaults/optimized-cswz4nv5/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "baseline",
+        "trial": 1,
+        "seconds": 1.0890197060070932,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5mjwwlwd84hqljz8z5hrv20b99lcbky2-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-defaults/baseline-4w0hbmjo/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "baseline",
+        "trial": 2,
+        "seconds": 1.0912717239698395,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5mjwwlwd84hqljz8z5hrv20b99lcbky2-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-defaults/baseline-z6e15f7c/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "optimized",
+        "trial": 2,
+        "seconds": 0.037891574087552726,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5dzzdk8l64j4d86fn4ss6ffnl0dxm800-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-defaults/optimized-gnbvj_td/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "optimized",
+        "trial": 3,
+        "seconds": 0.03994928998872638,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5dzzdk8l64j4d86fn4ss6ffnl0dxm800-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-defaults/optimized-kxrdfxzt/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "baseline",
+        "trial": 3,
+        "seconds": 1.0702487980015576,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5mjwwlwd84hqljz8z5hrv20b99lcbky2-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-defaults/baseline-dy60peck/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "baseline",
+        "trial": 4,
+        "seconds": 1.102688305079937,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5mjwwlwd84hqljz8z5hrv20b99lcbky2-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-defaults/baseline-mykb_fhd/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "optimized",
+        "trial": 4,
+        "seconds": 0.03969676396809518,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5dzzdk8l64j4d86fn4ss6ffnl0dxm800-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-defaults/optimized-37_bmr49/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      }
+    ],
+    "medians": {
+      "baseline": 1.0890197060070932,
+      "optimized": 0.03969676396809518
+    }
+  },
+  "materialization_native_reference": {
+    "samples": [
+      {
+        "mode": "baseline",
+        "trial": 0,
+        "seconds": 0.03869359998498112,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5mjwwlwd84hqljz8z5hrv20b99lcbky2-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-native/baseline-1qbcw9ue/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json",
+          "--native"
+        ]
+      },
+      {
+        "mode": "optimized",
+        "trial": 0,
+        "seconds": 0.03792745107784867,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5dzzdk8l64j4d86fn4ss6ffnl0dxm800-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-native/optimized-4as6bjge/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "optimized",
+        "trial": 1,
+        "seconds": 0.04177741194143891,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5dzzdk8l64j4d86fn4ss6ffnl0dxm800-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-native/optimized-1dv1n5g2/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "baseline",
+        "trial": 1,
+        "seconds": 0.04273835604544729,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5mjwwlwd84hqljz8z5hrv20b99lcbky2-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-native/baseline-2snfhdvm/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json",
+          "--native"
+        ]
+      },
+      {
+        "mode": "baseline",
+        "trial": 2,
+        "seconds": 0.04117915208917111,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5mjwwlwd84hqljz8z5hrv20b99lcbky2-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-native/baseline-0r8toihy/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json",
+          "--native"
+        ]
+      },
+      {
+        "mode": "optimized",
+        "trial": 2,
+        "seconds": 0.03993543400429189,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5dzzdk8l64j4d86fn4ss6ffnl0dxm800-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-native/optimized-3i_ky2j0/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "optimized",
+        "trial": 3,
+        "seconds": 0.043753899983130395,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5dzzdk8l64j4d86fn4ss6ffnl0dxm800-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-native/optimized-4v5kiwin/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      },
+      {
+        "mode": "baseline",
+        "trial": 3,
+        "seconds": 0.04063962690997869,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5mjwwlwd84hqljz8z5hrv20b99lcbky2-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-native/baseline-2vavn9qq/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json",
+          "--native"
+        ]
+      },
+      {
+        "mode": "baseline",
+        "trial": 4,
+        "seconds": 0.042373263044282794,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5mjwwlwd84hqljz8z5hrv20b99lcbky2-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-native/baseline-44yla3s4/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json",
+          "--native"
+        ]
+      },
+      {
+        "mode": "optimized",
+        "trial": 4,
+        "seconds": 0.04507648409344256,
+        "exit_code": 0,
+        "command": [
+          "/nix/store/5dzzdk8l64j4d86fn4ss6ffnl0dxm800-drvjs-0.1.0/bin/drvjs",
+          "assemble",
+          "/tmp/drvjs-ci-final-vue/project",
+          "/tmp/drvjs-ci-final-materialize-native/optimized-d980x5pe/output",
+          "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json"
+        ]
+      }
+    ],
+    "medians": {
+      "baseline": 0.04117915208917111,
+      "optimized": 0.04177741194143891
+    }
+  },
+  "nix_rebuild": {
+    "outputs": {
+      "before": "/nix/store/a1xp82x3jsl0f9arwfwrcw4626814bpz-drvjs-node-modules",
+      "after": "/nix/store/z57ypwpa08yycrah2hs7c2899za9jmiz-drvjs-node-modules"
+    },
+    "samples": [
+      {
+        "mode": "before",
+        "trial": 0,
+        "seconds": 1.7072057490004227,
+        "command": [
+          "nix-build",
+          "/tmp/drvjs-ci-vue-before",
+          "--no-out-link",
+          "--max-jobs",
+          "4",
+          "--cores",
+          "4",
+          "--check"
+        ]
+      },
+      {
+        "mode": "after",
+        "trial": 0,
+        "seconds": 0.49137727497145534,
+        "command": [
+          "nix-build",
+          "/tmp/drvjs-ci-final-vue",
+          "--no-out-link",
+          "--max-jobs",
+          "4",
+          "--cores",
+          "4",
+          "--check"
+        ]
+      },
+      {
+        "mode": "after",
+        "trial": 1,
+        "seconds": 0.49246537196449935,
+        "command": [
+          "nix-build",
+          "/tmp/drvjs-ci-final-vue",
+          "--no-out-link",
+          "--max-jobs",
+          "4",
+          "--cores",
+          "4",
+          "--check"
+        ]
+      },
+      {
+        "mode": "before",
+        "trial": 1,
+        "seconds": 1.7189641540171579,
+        "command": [
+          "nix-build",
+          "/tmp/drvjs-ci-vue-before",
+          "--no-out-link",
+          "--max-jobs",
+          "4",
+          "--cores",
+          "4",
+          "--check"
+        ]
+      },
+      {
+        "mode": "before",
+        "trial": 2,
+        "seconds": 5.576793976011686,
+        "command": [
+          "nix-build",
+          "/tmp/drvjs-ci-vue-before",
+          "--no-out-link",
+          "--max-jobs",
+          "4",
+          "--cores",
+          "4",
+          "--check"
+        ]
+      },
+      {
+        "mode": "after",
+        "trial": 2,
+        "seconds": 0.49230517901014537,
+        "command": [
+          "nix-build",
+          "/tmp/drvjs-ci-final-vue",
+          "--no-out-link",
+          "--max-jobs",
+          "4",
+          "--cores",
+          "4",
+          "--check"
+        ]
+      },
+      {
+        "mode": "after",
+        "trial": 3,
+        "seconds": 0.5002139649586752,
+        "command": [
+          "nix-build",
+          "/tmp/drvjs-ci-final-vue",
+          "--no-out-link",
+          "--max-jobs",
+          "4",
+          "--cores",
+          "4",
+          "--check"
+        ]
+      },
+      {
+        "mode": "before",
+        "trial": 3,
+        "seconds": 5.544786653015763,
+        "command": [
+          "nix-build",
+          "/tmp/drvjs-ci-vue-before",
+          "--no-out-link",
+          "--max-jobs",
+          "4",
+          "--cores",
+          "4",
+          "--check"
+        ]
+      },
+      {
+        "mode": "before",
+        "trial": 4,
+        "seconds": 1.7048970899777487,
+        "command": [
+          "nix-build",
+          "/tmp/drvjs-ci-vue-before",
+          "--no-out-link",
+          "--max-jobs",
+          "4",
+          "--cores",
+          "4",
+          "--check"
+        ]
+      },
+      {
+        "mode": "after",
+        "trial": 4,
+        "seconds": 0.482745498069562,
+        "command": [
+          "nix-build",
+          "/tmp/drvjs-ci-final-vue",
+          "--no-out-link",
+          "--max-jobs",
+          "4",
+          "--cores",
+          "4",
+          "--check"
+        ]
+      }
+    ],
+    "medians": {
+      "before": 1.7189641540171579,
+      "after": 0.49230517901014537
+    }
+  },
+  "closure": {
+    "before": {
+      "derivation": "/nix/store/mvachckn8787nb5zzxfk73m6z4b348n1-drvjs-node-modules.drv",
+      "input_roots": [
+        "/nix/store/0msi70sljchsfhx1n8f0hmflydzcgcgi-project",
+        "/nix/store/5mjwwlwd84hqljz8z5hrv20b99lcbky2-drvjs-0.1.0",
+        "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json",
+        "/nix/store/byi2zpy2bgcf3dr6y0l8m50rmjj8z7q1-bash-5.3p15",
+        "/nix/store/l622p70vy8k5sh7y5wizi5f2mic6ynpg-source-stdenv.sh",
+        "/nix/store/shkw4qm9qcw5sc5n1k5jznc83ny02r39-default-builder.sh",
+        "/nix/store/yld1xbwk79r51nqx8q1mmlgzpxx17zwr-stdenv-linux-no-cc"
+      ],
+      "input_paths": 256,
+      "input_nar_bytes": 459543048,
+      "output": "/nix/store/a1xp82x3jsl0f9arwfwrcw4626814bpz-drvjs-node-modules",
+      "input_zstd_bytes": 138164895,
+      "output_zstd_bytes": 3666660,
+      "output_nar_bytes": 21692752,
+      "output_references": [
+        "/nix/store/a1xp82x3jsl0f9arwfwrcw4626814bpz-drvjs-node-modules"
+      ]
+    },
+    "after": {
+      "derivation": "/nix/store/d3kz7c6qldr83n7lik3s8cmsxck8yzcp-drvjs-node-modules.drv",
+      "input_roots": [
+        "/nix/store/0msi70sljchsfhx1n8f0hmflydzcgcgi-project",
+        "/nix/store/129jdjmasm6psii2xx4vany3giss7w27-drvjs-0.1.0-unwrapped",
+        "/nix/store/as2sg3zv3nc7x7bfbhv6l8r5g96zx9lk-drvjs-tarballs.json",
+        "/nix/store/byi2zpy2bgcf3dr6y0l8m50rmjj8z7q1-bash-5.3p15",
+        "/nix/store/l622p70vy8k5sh7y5wizi5f2mic6ynpg-source-stdenv.sh",
+        "/nix/store/shkw4qm9qcw5sc5n1k5jznc83ny02r39-default-builder.sh",
+        "/nix/store/yld1xbwk79r51nqx8q1mmlgzpxx17zwr-stdenv-linux-no-cc"
+      ],
+      "input_paths": 159,
+      "input_nar_bytes": 95259824,
+      "output": "/nix/store/z57ypwpa08yycrah2hs7c2899za9jmiz-drvjs-node-modules",
+      "input_zstd_bytes": 29544034,
+      "output_zstd_bytes": 3666711,
+      "output_nar_bytes": 21693320,
+      "output_references": [
+        "/nix/store/z57ypwpa08yycrah2hs7c2899za9jmiz-drvjs-node-modules"
+      ]
+    }
+  },
+  "validation": {
+    "rust_tests": 34,
+    "clippy": "passed -D warnings",
+    "format": "passed",
+    "flake_check": "passed x86_64-linux",
+    "integration_scripts": [
+      "integration.sh",
+      "configured.sh",
+      "unpacked.sh",
+      "native.sh",
+      "native-compat.sh",
+      "native-store-patches.sh",
+      "native-already-applied.sh",
+      "registry.py",
+      "vue-workspace.sh",
+      "ci.py --iets PR3-binary"
+    ],
+    "iets_checks": [
+      "matching drvPaths with 1 and 4 workers on fixture/subset/full exports",
+      "fresh SHA-256/SHA-512 downloads and native builds",
+      "source-change rebuilds reuse archives",
+      "Nix --check reproducibility of iets outputs"
+    ],
+    "preserved_fetch_paths": {
+      "fixture": 18,
+      "vue_subset": 108,
+      "vue_full": 741
+    },
+    "helper_build_graph_excludes_node_and_pnpm": true
+  }
+}

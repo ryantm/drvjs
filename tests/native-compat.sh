@@ -36,13 +36,19 @@ for (const name of ['app', 'optional-app', 'example']) {
 JS
 for case in deprecated never both; do
     (cd "$scratch/$case" && "$pnpm_compat" install --frozen-lockfile --ignore-scripts --offline --config.manage-package-manager-versions=false)
-    drvjs export --native -C "$scratch/$case" -o "$scratch/$case-export"
-    drvjs assemble --native "$scratch/$case-export/project" "$scratch/$case-result" "$scratch/empty.json"
+    drvjs export -C "$scratch/$case" -o "$scratch/$case-export"
+    drvjs assemble "$scratch/$case-export/project" "$scratch/$case-result" "$scratch/empty.json" --keep-verification-store
+    drvjs verify "$scratch/$case-result"
 done
 (cd "$scratch/workspace" && "$pnpm_compat" install --lockfile-only --ignore-scripts --offline --config.manage-package-manager-versions=false)
 (cd "$scratch/workspace" && "$pnpm_compat" install --frozen-lockfile --ignore-scripts --offline --config.manage-package-manager-versions=false)
-drvjs export --native -C "$scratch/workspace" -o "$scratch/workspace-export"
-drvjs assemble --native "$scratch/workspace-export/project" "$scratch/workspace-result" "$scratch/empty.json"
+drvjs export -C "$scratch/workspace" -o "$scratch/workspace-export"
+# Projection can leave explicit empty package maps; pnpm omits them in the
+# installed lockfile. Check the actual verifier, not just runtime resolution.
+grep -q '^packages: {}$' "$scratch/workspace-export/project/pnpm-lock.yaml"
+grep -q '^snapshots: {}$' "$scratch/workspace-export/project/pnpm-lock.yaml"
+drvjs assemble "$scratch/workspace-export/project" "$scratch/workspace-result" "$scratch/empty.json" --keep-verification-store
+drvjs verify "$scratch/workspace-result"
 node - "$scratch/workspace-result" <<'JS'
 const assert = require('node:assert/strict');
 for (const name of ['app', 'optional-app']) assert.equal(require(`${process.argv[2]}/packages/${name}`), 42);
@@ -54,7 +60,7 @@ const manifest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 manifest.dependencies.example = 'workspace:^';
 fs.writeFileSync(process.argv[2], JSON.stringify(manifest));
 JS
-if drvjs assemble --native "$scratch/workspace-export/project" "$scratch/stale-result" "$scratch/empty.json" > "$scratch/stale.log" 2>&1; then
+if drvjs assemble "$scratch/workspace-export/project" "$scratch/stale-result" "$scratch/empty.json" > "$scratch/stale.log" 2>&1; then
     echo 'FAIL: accepted stale winning dependency' >&2; exit 1
 fi
 grep -q 'ERR_PNPM_OUTDATED_LOCKFILE' "$scratch/stale.log"

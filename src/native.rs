@@ -503,7 +503,8 @@ pub fn assemble(
                 store::unpack(file, target, id, integrity)?
             }
         } else {
-            read_json(&store::index_path(&cache, id, integrity)?)?
+            read_json(&store::index_path(&cache, id, integrity)?)
+                .with_context(|| format!("missing or invalid cached package: {id}"))?
         };
         loaded
             .lock()
@@ -841,16 +842,28 @@ pub fn assemble(
         "drvjs native: links/bins {:.3}s",
         phase.elapsed().as_secs_f64()
     );
-    let mut metadata = json!({"hoistPattern":private,"publicHoistPattern":public,"hoistedDependencies":hoisted,"included":{"dependencies":true,"devDependencies":true,"optionalDependencies":true},"injectedDeps":{},"layoutVersion":5,"nodeLinker":"isolated","packageManager":"pnpm@10.34.5","pendingBuilds":pending,"prunedAt":"Thu, 01 Jan 1970 00:00:00 GMT","registries":registries,"skipped":skipped,"storeDir":out.join(".pnpm-store/v10"),"virtualStoreDir":".pnpm","virtualStoreDirMaxLength":120});
-    if had_patch {
-        metadata["ignoredBuilds"] = json!([]);
+    // With no importer dependencies pnpm omits installation metadata entirely.
+    if importers.values().any(|edges| !edges.is_empty()) {
+        let mut metadata = json!({"hoistPattern":private,"publicHoistPattern":public,"hoistedDependencies":hoisted,"included":{"dependencies":true,"devDependencies":true,"optionalDependencies":true},"injectedDeps":{},"layoutVersion":5,"nodeLinker":"isolated","packageManager":"pnpm@10.34.5","pendingBuilds":pending,"prunedAt":"Thu, 01 Jan 1970 00:00:00 GMT","registries":registries,"skipped":skipped,"storeDir":out.join(".pnpm-store/v10"),"virtualStoreDir":".pnpm","virtualStoreDirMaxLength":120});
+        if had_patch {
+            metadata["ignoredBuilds"] = json!([]);
+        }
+        store::write_json(&modules.join(".modules.yaml"), &metadata)?;
+        let mut current = lock.clone();
+        // Workspace projection can leave empty maps. pnpm omits these in its
+        // installed lockfile, including when every dependency is a workspace link.
+        for key in ["packages", "snapshots"] {
+            if current.get(key).is_some_and(|value| {
+                value.is_null() || value.as_object().is_some_and(|map| map.is_empty())
+            }) {
+                current.as_object_mut().unwrap().remove(key);
+            }
+        }
+        fs::write(
+            virtual_store.join("lock.yaml"),
+            serde_yaml_ng::to_string(&current)?,
+        )?;
     }
-    store::write_json(&modules.join(".modules.yaml"), &metadata)?;
-    let current = lock.clone();
-    fs::write(
-        virtual_store.join("lock.yaml"),
-        serde_yaml_ng::to_string(&current)?,
-    )?;
     write_state(
         &out,
         &project_manifests,
@@ -905,7 +918,8 @@ fn write_state(
             project_state[out.join(id).to_string_lossy().trim_end_matches("/.")] = p;
         }
     }
-    if workspace.get("catalog").is_some() || workspace.get("catalogs").is_some() {
+    // pnpm records an empty catalog map even for workspaces without catalogs.
+    if out.join("pnpm-workspace.yaml").exists() {
         let mut c = workspace.get("catalogs").cloned().unwrap_or(json!({}));
         if let Some(default) = workspace.get("catalog") {
             c["default"] = default.clone();

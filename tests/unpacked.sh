@@ -24,5 +24,5 @@ if drvjs assemble "$scratch/fixture/project" "$scratch/incomplete" /dev/null --u
     echo 'FAIL: incomplete unpacked store accepted' >&2
     exit 1
 fi
-grep -q 'ERR_PNPM_NO_OFFLINE_TARBALL' "$scratch/incomplete.log"
+grep -q 'missing or invalid cached package' "$scratch/incomplete.log"
 echo 'PASS: unpacked store offline verification, patches/hooks, reproducibility, optional retention, incomplete-cache rejection'

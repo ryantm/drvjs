@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare assembler wall time with already-realized Nix tarballs.
 
-Use the same pnpm/Node environment for both executables. This excludes export,
+Both executables receive the same inputs. This excludes export,
 Nix evaluation, downloads, NAR hashing/registration and output transfers.
 """
 import argparse
@@ -19,7 +19,7 @@ parser.add_argument('--source', type=pathlib.Path, required=True)
 parser.add_argument('--tarballs', type=pathlib.Path, required=True)
 parser.add_argument('--out', type=pathlib.Path, required=True)
 parser.add_argument('--runs', type=int, default=3)
-parser.add_argument('--native', action='store_true', help='Compare native assemblers')
+parser.add_argument('--baseline-arg', action='append', default=[], help='Extra assembler argument for an older baseline; repeatable')
 args = parser.parse_args()
 if args.runs < 1:
     parser.error('--runs must be positive')
@@ -33,8 +33,8 @@ for trial in range(args.runs):
             command = [shutil.which(getattr(args, mode)) or getattr(args, mode),
                        'assemble', str(args.source.resolve()), str(pathlib.Path(scratch)/'output'),
                        str(args.tarballs.resolve())]
-            if args.native:
-                command.append('--native')
+            if mode == 'baseline':
+                command += args.baseline_arg
             with (args.out / f'{mode}-{trial}.log').open('w') as log:
                 started = time.monotonic()
                 result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)

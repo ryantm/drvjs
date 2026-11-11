@@ -1,9 +1,9 @@
-mod assemble;
 mod config;
 mod fetch;
 mod native;
 mod native_store;
 mod plan;
+mod pnpm;
 mod verify;
 mod workspace;
 
@@ -40,11 +40,8 @@ enum Commands {
         /// Retain pnpm's package store for later offline `drvjs verify`.
         #[arg(long)]
         keep_verification_store: bool,
-        /// Experimental Rust assembler; pnpm is used only for independent verification.
+        /// Cache zstd-normalized archives in Nix (experimental).
         #[arg(long)]
-        native: bool,
-        /// Cache zstd-normalized archives in Nix (experimental; requires --native).
-        #[arg(long, requires = "native")]
         zstd_archives: bool,
     },
     /// Import authenticated tarballs into Nix without storing credentials.
@@ -74,9 +71,6 @@ enum Commands {
         /// Experimental: seed installation from a compatible retained pnpm store.
         #[arg(long)]
         unpacked_store: Option<PathBuf>,
-        /// Assemble without executing pnpm.
-        #[arg(long)]
-        native: bool,
     },
 }
 
@@ -86,7 +80,6 @@ fn export(
     filters: &[String],
     npmrc: Option<&Path>,
     keep_verification_store: bool,
-    native: bool,
     zstd_archives: bool,
 ) -> Result<()> {
     let project = project.canonicalize()?;
@@ -115,7 +108,7 @@ fn export(
     fs::write(
         stage.path().join("options.json"),
         serde_json::to_vec_pretty(
-            &serde_json::json!({"keepVerificationStore": keep_verification_store, "nativeAssembler": native, "zstdArchives": zstd_archives}),
+            &serde_json::json!({"keepVerificationStore": keep_verification_store, "zstdArchives": zstd_archives}),
         )?,
     )?;
     fs::write(
@@ -131,7 +124,7 @@ fn export(
         ("src/config.rs", include_str!("config.rs")),
         ("src/fetch.rs", include_str!("fetch.rs")),
         ("src/plan.rs", include_str!("plan.rs")),
-        ("src/assemble.rs", include_str!("assemble.rs")),
+        ("src/pnpm.rs", include_str!("pnpm.rs")),
         ("src/native.rs", include_str!("native.rs")),
         ("src/native_store.rs", include_str!("native_store.rs")),
         ("src/native_shim.txt", include_str!("native_shim.txt")),
@@ -160,7 +153,6 @@ fn main() {
             filters,
             npmrc,
             keep_verification_store,
-            native,
             zstd_archives,
         } => export(
             &directory,
@@ -168,7 +160,6 @@ fn main() {
             &filters,
             npmrc.as_deref(),
             keep_verification_store,
-            native,
             zstd_archives,
         ),
         Commands::Fetch {
@@ -183,26 +174,13 @@ fn main() {
             tarballs,
             keep_verification_store,
             unpacked_store,
-            native,
-        } => {
-            if native {
-                native::assemble(
-                    &source,
-                    &out,
-                    &tarballs,
-                    keep_verification_store,
-                    unpacked_store.as_deref(),
-                )
-            } else {
-                assemble::assemble(
-                    &source,
-                    &out,
-                    &tarballs,
-                    keep_verification_store,
-                    unpacked_store.as_deref(),
-                )
-            }
-        }
+        } => native::assemble(
+            &source,
+            &out,
+            &tarballs,
+            keep_verification_store,
+            unpacked_store.as_deref(),
+        ),
     };
     if let Err(error) = result.context("drvjs failed") {
         eprintln!("{error:#}");

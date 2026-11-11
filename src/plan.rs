@@ -13,6 +13,8 @@ struct Lock {
     importers: BTreeMap<String, Value>,
     #[serde(default)]
     packages: BTreeMap<String, Value>,
+    #[serde(default)]
+    patched_dependencies: BTreeMap<String, Value>,
 }
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Package {
@@ -27,6 +29,8 @@ pub struct Package {
 pub struct Plan {
     pub format: u32,
     pub packages: Vec<Package>,
+    #[serde(rename = "hasPatches", default)]
+    pub has_patches: bool,
 }
 
 #[cfg(test)]
@@ -128,6 +132,7 @@ pub fn parse_with_registry(input: &str, npmrc: &BTreeMap<String, String>) -> Res
     Ok(Plan {
         format: 1,
         packages,
+        has_patches: !lock.patched_dependencies.is_empty(),
     })
 }
 
@@ -177,5 +182,18 @@ mod tests {
             before.packages[0],
             parse(&lock.to_string()).unwrap().packages[0]
         );
+    }
+
+    #[test]
+    fn patch_tools_follow_the_selected_lockfile() {
+        let mut lock = fixture();
+        let plain = parse(&lock.to_string()).unwrap();
+        assert!(!plain.has_patches);
+        lock["patchedDependencies"] = serde_json::json!({
+            "@scope/example@1.2.3": {"path":"patches/example.patch", "hash":"locked"}
+        });
+        let patched = parse(&lock.to_string()).unwrap();
+        assert!(patched.has_patches);
+        assert_eq!(plain.packages, patched.packages);
     }
 }

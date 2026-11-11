@@ -27,6 +27,15 @@ jobs:
       - uses: DeterminateSystems/determinate-nix-action@f296148a827001a9a82d3685b53210c06e5d3b67 # v3
       - run: nix flake show --all-systems
       - run: nix flake check -L
+      - name: Check native assembly and fetching
+        run: |
+          nix shell --inputs-from . .#drvjs nixpkgs#nodejs nixpkgs#pnpm_10 nixpkgs#python3 nixpkgs#gitMinimal --command bash -euc '
+            for test in integration configured unpacked native native-compat native-store-patches native-already-applied; do
+              bash "tests/$test.sh"
+            done
+            python3 tests/registry.py
+            python3 tests/ci.py
+          '
 
   flakehub:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'

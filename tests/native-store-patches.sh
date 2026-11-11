@@ -16,9 +16,9 @@ require('node:fs').writeFileSync(process.argv[2], JSON.stringify({
 JS
 (cd "$scratch/project" && "$pnpm_compat" install --ignore-scripts --store-dir "$scratch/store" --config.manage-package-manager-versions=false)
 (cd "$scratch/project" && "$pnpm_compat" install --offline --frozen-lockfile --ignore-scripts --store-dir "$scratch/store" --config.manage-package-manager-versions=false)
-drvjs export --native -C "$scratch/project" -o "$scratch/export"
+drvjs export -C "$scratch/project" -o "$scratch/export"
 printf '[]\n' > "$scratch/empty.json"
-drvjs assemble --native "$scratch/export/project" "$scratch/result" "$scratch/empty.json" --unpacked-store "$scratch/store"
+drvjs assemble "$scratch/export/project" "$scratch/result" "$scratch/empty.json" --unpacked-store "$scratch/store"
 node - "$scratch/result" <<'JS'
 const assert = require('node:assert/strict');
 assert.equal(require(`${process.argv[2]}/node_modules/is-number/package.json`).drvjsPatched, true);
@@ -49,7 +49,7 @@ index.files['package.json'] = {...index.files['package.json'], integrity: `sha51
 fs.writeFileSync(indexPath, JSON.stringify(index));
 fs.writeFileSync(path.join(root, 'before.json'), JSON.stringify({indexPath, content, index: fs.readFileSync(indexPath, 'base64'), bytes: bytes.toString('base64')}));
 JS
-drvjs assemble --native "$scratch/export/project" "$scratch/already" "$scratch/empty.json" --unpacked-store "$scratch/store"
+drvjs assemble "$scratch/export/project" "$scratch/already" "$scratch/empty.json" --unpacked-store "$scratch/store"
 node - "$scratch/before.json" <<'JS'
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
@@ -77,7 +77,7 @@ index.files['package.json'] = {...index.files['package.json'], integrity: `sha51
 fs.writeFileSync(before.indexPath, JSON.stringify(index));
 fs.writeFileSync(path.join(root, 'incompatible-before.json'), JSON.stringify({indexPath: before.indexPath, content, index: fs.readFileSync(before.indexPath, 'base64'), bytes: bytes.toString('base64')}));
 JS
-if drvjs assemble --native "$scratch/export/project" "$scratch/incompatible" "$scratch/empty.json" --unpacked-store "$scratch/store" > "$scratch/incompatible.log" 2>&1; then
+if drvjs assemble "$scratch/export/project" "$scratch/incompatible" "$scratch/empty.json" --unpacked-store "$scratch/store" > "$scratch/incompatible.log" 2>&1; then
     echo 'FAIL: accepted incompatible base-index content' >&2; exit 1
 fi
 grep -q 'incompatible --unpacked-store entry or patch' "$scratch/incompatible.log"

@@ -7,15 +7,17 @@
   }).outPath {},
   unpackedStore ? null,
   zstdArchives ? (builtins.fromJSON (builtins.readFile ./options.json)).zstdArchives or false,
-  nativeAssembler ? (builtins.fromJSON (builtins.readFile ./options.json)).nativeAssembler or false,
   keepVerificationStore ? (builtins.fromJSON (builtins.readFile ./options.json)).keepVerificationStore
 }:
-assert pkgs.lib.assertMsg (!zstdArchives || nativeAssembler) "zstdArchives requires nativeAssembler";
 let
   plan = builtins.fromJSON (builtins.readFile ./plan.json);
+  # These are single-URL, flat fixed-output downloads. The daemon's built-in
+  # fetcher avoids a stdenv/curl derivation for each lock entry and preserves
+  # the original hash + name store paths (including host-prefetched tarballs).
+  fetchurl = import <nix/fetchurl.nix>;
   tarballs = map (package: {
     name = package.path;
-    value = pkgs.fetchurl {
+    value = fetchurl {
       inherit (package) url hash;
       name = package.name;
     };
@@ -33,9 +35,8 @@ let
       nativeBuildInputs = [ pkgs.gzip pkgs.zstd pkgs.openssl ];
     } ''
       set -euo pipefail
-      gzip -dc ${fetched.${package.path}} > package.tar
       mkdir "$out"
-      zstd -q -1 package.tar -o "$out/archive.tar.zst"
+      gzip -dc ${fetched.${package.path}} | zstd -q -1 -o "$out/archive.tar.zst"
       printf 'sha512-' > "$out/integrity"
       openssl dgst -sha512 -binary "$out/archive.tar.zst" | openssl base64 -A >> "$out/integrity"
     '';
@@ -59,10 +60,11 @@ PY
 in pkgs.runCommand "drvjs-node-modules" {
   # Assembly is mostly filesystem work; offloading can transfer gigabytes back.
   preferLocalBuild = true;
-  nativeBuildInputs = [ drvjs ];
+  nativeBuildInputs = [ drvjs.unwrapped ]
+    ++ pkgs.lib.optional (plan.hasPatches or true) pkgs.gitMinimal;
   passthru = { inherit tarballs; archiveSources = sources; };
 } ''
   export HOME=$TMPDIR/home
   mkdir -p "$HOME"
-  drvjs assemble ${pkgs.lib.optionalString nativeAssembler "--native"} ${./project} "$out" ${if unpackedStore == null then sources else pkgs.writeText "unused-tarballs.json" "[]"} ${pkgs.lib.optionalString (unpackedStore != null) "--unpacked-store ${pkgs.lib.escapeShellArg "${unpackedStore}"}"} ${pkgs.lib.optionalString keepVerificationStore "--keep-verification-store"}
+  drvjs assemble ${./project} "$out" ${if unpackedStore == null then sources else pkgs.writeText "unused-tarballs.json" "[]"} ${pkgs.lib.optionalString (unpackedStore != null) "--unpacked-store ${pkgs.lib.escapeShellArg "${unpackedStore}"}"} ${pkgs.lib.optionalString keepVerificationStore "--keep-verification-store"}
 ''

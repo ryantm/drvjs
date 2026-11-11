@@ -1,10 +1,9 @@
 # drvjs
 
 A Rust CLI that turns a pnpm lockfile and project manifests into a Nix-built
-`node_modules` tree. Supports workspace dependency subsets. Early prototype,
-licensed CC0.
+`node_modules` tree. Supports workspace dependency subsets. Native Rust assembly, licensed CC0.
 
-Each npm tarball is a separate `fetchurl` derivation with the lockfile's SRI
+Each npm tarball is a separate built-in `fetchurl` derivation with the lockfile's SRI
 hash. Nix reuses unchanged downloads locally or through a binary cache.
 Assembly is one derivation per exported selection; it is not yet a derivation
 per installed package or workspace.
@@ -83,16 +82,16 @@ Maintainers publish a new version by pushing a `v*.*.*` tag. The
 publishing to both registries. It can also retry an existing tag through
 `workflow_dispatch`.
 
-## Experimental native assembly
+## Native assembly
 
-`--native` selects the Rust assembler. It reads the projected lockfile, verifies
+Native Rust assembly is the only supported installation path. It reads the projected lockfile, verifies
 and decompresses Nix-fetched tarballs, applies locked patches with `git apply`,
 and creates the isolated package layout, workspace links, hoists, executable
 shims, and pnpm metadata. **Assembly does not launch pnpm.** Lifecycle scripts
 remain disabled; a downstream build must produce any required generated files.
 
 ```sh
-drvjs export --native -C /path/to/project -o /tmp/native-deps
+drvjs export -C /path/to/project -o /tmp/native-deps
 nix-build /tmp/native-deps -o result
 
 # Independent compatibility check, only when requested:
@@ -100,7 +99,6 @@ nix-build /tmp/native-deps --arg keepVerificationStore true -o result-check
 drvjs verify result-check
 ```
 
-An existing export can select this with `--arg nativeAssembler true`.
 `--arg unpackedStore /nix/store/…/.pnpm-store` also works: drvjs reads and
 integrity-checks cached content without modifying the supplied store. Nix makes
 the completed output immutable. Retaining the verification store is optional
@@ -124,13 +122,17 @@ verified archives extract directly into package directories; peer instances
 reuse hardlinks. Patches use independent copies, and changing a bin's executable
 permissions first detaches its file from shared content.
 
-This is experimental compatibility with pnpm 10.34.5's isolated layout on
-Linux, not a replacement dependency resolver. It consumes the locked graph;
-hooks are checksum-checked rather than executed, and pnpm remains the authority
+This implements pnpm 10.34.5's isolated layout on Linux and consumes its locked
+dependency graph; drvjs is not a dependency resolver.
+Hooks are checksum-checked rather than executed, and pnpm remains the authority
 for generating/updating lockfiles. Native frozen-configuration validation is
 not yet equivalent to every pnpm check (notably package-extension configuration
 checksums and engine requirements). Use independent verification before adopting
-it for a new project. The pnpm-backed assembler remains the default.
+it for a new project. pnpm is used only by the optional independent verifier.
+
+The former `--native` CLI flag and `nativeAssembler` Nix argument have been
+removed. Re-export old graphs to use the current implementation; old exports
+retain their bundled helper and behavior.
 
 Root `allowedDeprecatedVersions` and `neverBuiltDependencies` are accepted and
 preserved: native assembly emits no deprecation warnings and runs no lifecycle
@@ -143,7 +145,8 @@ version; native output metadata and independent verification still target the
 pinned pnpm version.
 
 `tests/native.sh` covers tarballs, retained caches, patches, independent offline
-verification, Nix reproducibility, and a failing pnpm stub during native assembly.
+verification, and Nix reproducibility. `tests/ci.py` checks the sandbox inputs
+exclude pnpm and Node, built-in fetches, and optional iets compatibility.
 
 Native output passed independent pnpm verification for the public Vue compiler-sfc
 subset (98 package instances, 6 importers).
@@ -161,11 +164,11 @@ For repeated native reconstruction, Nix can normalize downloaded gzip tarballs
 into separately cached zstd archives:
 
 ```sh
-drvjs export --native --zstd-archives -C ./project -o ./export
+drvjs export --zstd-archives -C ./project -o ./export
 nix-build ./export -o result
 ```
 
-The Nix argument `--arg zstdArchives true` also enables this for a native export.
+The Nix argument `--arg zstdArchives true` also enables this for an existing export.
 `nix-build ./export -A archiveSources --no-out-link` realizes just its archive
 manifest and package cache. The original download is checked by `fetchurl`;
 normalization runs in Nix, and assembly checks the normalized payload's SHA-512
@@ -190,18 +193,15 @@ using your own exported project and already-fetched inputs.
 2. Nix fetches only retained tarballs and verifies their SRI hashes. Unrelated
    workspace packages are absent from the derivation graph, not merely skipped
    by a later pnpm command.
-3. Inside the Nix sandbox, a Rust loopback server serves only Nix-fetched
-   tarballs. `pnpm fetch` fills a fresh content-addressed store and materializes
-   packages using hardlinks on the output filesystem. The server cannot forward
-   requests to the public registry.
-4. After the server stops, drvjs moves the prepared virtual store into place.
-   `pnpm install --offline --frozen-lockfile --ignore-scripts` reuses those files
-   and finishes workspace links, hoisting and executable shims.
-5. Nix verifies tarball hashes and pnpm validates integrity during fetching.
-   pnpm must leave the projected lockfile byte-for-byte unchanged. The additional
-   full installed-file scan (`pnpm store status`) runs only when retaining the
-   verification store, and during explicit `drvjs verify`. Volatile timestamps and temporary project
-   registrations are normalized or removed for reproducible outputs.
+3. The native assembler validates the projected manifests and lockfile, checks
+   every selected archive's SRI hash, and extracts supported packages directly
+   into the isolated virtual store. Peer instances reuse hardlinks.
+4. Locked patches are checksum-checked and applied with Git. Native assembly
+   then creates dependency/workspace links, hoists, executable shims, and pnpm
+   metadata. No registry server, Node process, or pnpm process is started.
+5. Frozen manifest/configuration checks and archive integrity checks run on every
+   assembly. Retaining a verification store is optional; `drvjs verify` performs
+   independent offline pnpm reconstruction and compares the installed tree.
 
 For a single non-workspace project with no filters, the original lockfile bytes
 are preserved unless a URL-only resolution needs an integrity hash. drvjs fetches
@@ -229,10 +229,8 @@ drvjs verify ./result-with-store
 ```
 
 `--arg keepVerificationStore false` produces the smaller output even if the
-export opted in. Both variants reuse the same Nix tarball fetches. Default builds
-still verify fetched tarball integrity and perform frozen installation before
-removing the cache. The additional installed-file scan is reserved for the
-verification mode. `verify` on a default output explains how to rebuild with the cache.
+export opted in. Both variants reuse the same Nix tarball fetches. Default builds still verify fetched tarball integrity and frozen manifests.
+The independent pnpm installed-file scan runs only through `drvjs verify`. `verify` on a default output explains how to rebuild with the cache.
 The optional cache is retained inside that output, not a separate runtime dependency.
 
 `drvjs verify RESULT` copies sources and package-store contents to a temporary
@@ -268,11 +266,11 @@ URL-only packages requiring auth during export, also pass `export --npmrc PATH`.
 
 Overrides (including root `resolutions`), package extensions, peer rules,
 architecture settings, hoist settings, and declared patches are retained. Only
-patches reachable in a workspace selection are copied. pnpm applies patches and
-validates hook/config checksums during frozen installation. The root
-`.pnpmfile.cjs` is copied and executes in pnpm; export itself does not execute it.
-Hooks must be self-contained or use files included in the selection. Build hooks
-run in the Nix sandbox; `verify` runs them locally. Lifecycle scripts remain
+patches reachable in a workspace selection are copied. Native assembly applies locked patches and validates the hook checksum.
+The root `.pnpmfile.cjs` is copied but runs only during independent pnpm
+verification; export and assembly do not execute it.
+Hooks must be self-contained or use files included in the selection.
+`verify` runs them locally in its temporary reconstruction. Lifecycle scripts remain
 disabled. Hook environments are cleared, with `CI=true` and
 `PNPM_SKIP_AUTH_CHECK=true`; private-package stub flags are not inherited.
 
@@ -311,19 +309,96 @@ bash tests/vue-workspace.sh /path/to/vue-v3.5.22
 
 ## Materialization performance
 
-The assembler reuses the virtual store prepared by `pnpm fetch`, uses hardlinks
-on the output filesystem, and reserves the additional installed-file integrity
-scan for verification mode. It removes fetch's provisional current-lock and hoisting metadata before
-installation so all executable shims match a fresh pnpm install. Tarball
-integrity and frozen-lockfile checks remain enabled. Nix prefers local assembly
-to avoid transferring a large completed tree back from a remote builder;
-binary-cache substitution remains available.
+The native assembler verifies and extracts each archive once, uses hardlinks for
+peer instances, and writes pnpm-compatible links and metadata. Tarball integrity
+and frozen-manifest checks remain enabled. Nix prefers local assembly to avoid
+transferring a large completed tree back from a remote builder; binary-cache
+substitution remains available.
 
-`benchmarks/materialize.py` runs alternating assembler-only comparisons with
+Tarball fetches use Nix's built-in fetcher, avoiding a curl/stdenv closure for each
+fixed-output derivation. Hashes and output names stay unchanged, so previously
+fetched or host-imported tarballs remain reusable. Assembly uses a separate
+`unwrapped` Rust derivation and a compiler-free build environment. Git is
+included only for selections with locked patches; Node, pnpm, curl, and the Nix
+CLI are absent from the assembly inputs. The default CLI output still provides
+those host tools for exporting, fetching, and independent verification. Its
+wrapper is a separate derivation, so evaluating or building the assembler does
+not require building Node or pnpm.
+
+`benchmarks/materialize.py` runs alternating before/after comparisons with
 existing project and tarball-manifest inputs. Downloads, export and Nix
-realization overhead should be measured separately.
+realization overhead should be measured separately. When comparing against an
+older native assembler, pass `--baseline-arg=--native`.
 
-### Experimental unpacked-store reuse
+### CI measurements and iets
+
+The [2026-11-10 measurements](benchmarks/ci-2026-11-10.json) compare commit
+`0ed94385e5884fdd6ccd618f9a833f55dc4a2ee3` with the native-only implementation on
+an x86_64-linux Intel i7-1280P. The project is Vue v3.5.22, revision
+`5a8aa0b2ba575e098cbb63b396e9bcb751eb3a0f`: 741 tarballs for evaluation of the
+whole workspace, and 108 tarballs / 98 installed package instances for the
+compiler-sfc assembly and closure measurements.
+
+| Measurement (median of 5 runs) | Before | Native-only |
+| --- | ---: | ---: |
+| Full Vue evaluation, Nix | 0.451 s | 0.348 s |
+| Full Vue evaluation, iets, 1 worker | 0.226 s | 0.136 s |
+| Full Vue evaluation, iets, 4 workers | 0.113 s | 0.084 s |
+| Compiler-sfc Nix rebuild with cached inputs | 1.719 s | 0.492 s |
+| Compiler-sfc assembler alone, default path | 1.089 s | 0.040 s |
+
+The previous default used pnpm. A separate comparison of the old opt-in native
+assembler and the current native assembler measured about 41–42 ms for both;
+the default-path speedup comes from removing pnpm assembly. Nix rebuild samples
+ranged from 1.70–5.58 s before and 0.48–0.50 s after. Every forced rebuild passed
+Nix's reproducibility check.
+
+The realized assembly input closure falls from **438.25 MiB to 90.85 MiB**
+(256 to 159 store paths). Copying that closure to an empty local binary cache
+with zstd level 3 produces **131.76 MiB before and 28.18 MiB after**, a 78.6%
+reduction in compressed payload. These are transfer byte counts, not network
+timings. They include the tool runtime closures, project, and downloaded
+archives; they exclude the compiler used to build drvjs itself. The installed
+output remains 20.69 MiB NAR / 3.50 MiB compressed. No package files were pruned
+to obtain the tool-closure reduction.
+
+All 741 original tarball output paths are preserved. Authenticated host
+prefetching still reuses those paths, and tests exercise fresh daemon downloads
+with SHA-256 and SHA-512, bad-digest rejection, and offline reuse.
+
+Compatibility was tested with [replit/iets PR #3](https://github.com/replit/iets/pull/3),
+commit `69883a64bfb0d9a95dce253dae304878e07b076e`. Nix and iets produce identical
+derivation paths for each export. The iets tests disable fallback and IFD, and
+cover native builds of previously unfetched packages and source-change rebuilds
+that reuse the tarballs. drvjs exports are static derivations: this validates
+them with the dynamic-derivation-capable iets version, without introducing a
+dynamic derivation or recursive evaluator into drvjs.
+
+Evaluation measurements use five alternating warm runs, disable iets's tracing
+cache, and force the full assembly derivation. Build/download time is excluded;
+the compiled-file and OS caches remain warm. Assembly measurements use five
+alternating runs with identical realized inputs, fresh output directories, and
+four native workers. They exclude Nix evaluation, registration, downloads, and
+cleanup. The raw report includes every timing and command.
+The Nix rebuild measurement uses `benchmarks/rebuild.py`, which realizes tools
+and archives first, then times alternating `nix-build --check` runs with four
+cores, including evaluation, assembly, NAR checking, and daemon overhead.
+
+```sh
+python3 tests/ci.py --iets /path/to/iets
+python3 benchmarks/evaluate.py --before /tmp/vue-before --after /tmp/vue-after \
+  --iets /path/to/iets --runs 5 --out evaluation.json
+nix-build /tmp/vue-after --no-out-link
+python3 benchmarks/closure.py /tmp/vue-after --out closure.json
+python3 benchmarks/rebuild.py --before /tmp/vue-before --after /tmp/vue-after \
+  --runs 5 --out rebuild-results
+```
+
+CI runs the native integration suite, independent pnpm verification, reproducible
+rebuilds, and fetcher checks. The optional iets check uses the explicit binary
+passed above; it does not silently fall back to invoking Nix for evaluation.
+
+### Unpacked-store reuse
 
 A retained pnpm store can seed another assembly without fetching or
 decompressing tarballs. This is opt-in:
@@ -337,20 +412,16 @@ nix-build ./export --no-out-link --arg unpackedStore "$cache/.pnpm-store"
 
 The new output still omits its verification store unless
 `--arg keepVerificationStore true` is also supplied. The seed remains a separate,
-large Nix output; retain a GC root if you want to keep it. This prototype reuses
+large Nix output; retain a GC root if you want to keep it. This path reuses
 an entire retained store, rather than producing independent unpack derivations
 for each package.
 
-Nix store files stay immutable. drvjs creates writable directories and copies
-the indexes, referencing cached contents through private symlinks. Only contents
-belonging to patched packages get writable copies before installation. pnpm
-imports regular files using copy mode, preserving Node module resolution, and
-runs its frozen offline install with integrity checks enabled. The input cache
-remains unchanged. Opt-in retained verification stores materialize the temporary
-links so that they remain self-contained. Missing
-packages fail offline rather than triggering downloads; regenerate the seed
-when dependencies require it. Use trusted caches produced with the pinned pnpm
-version and compatible project settings.
+Nix store files stay immutable. Native assembly reads the supplied base indexes,
+validates contents while copying, and applies patches only to private copies.
+Retained verification stores remain self-contained. Missing packages fail offline
+rather than triggering downloads; regenerate the seed when dependencies require
+it. Use trusted caches produced with the pinned pnpm version and compatible
+project settings.
 
 Native store reuse reads the base index's `files` map and ignores `sideEffects`
 overlays. For both fetched tarballs and cached files, native patching verifies
@@ -395,7 +466,7 @@ but commands that modify dependencies need a writable project/install directory.
 - Git/local-file dependencies, injected workspaces and source symlinks are rejected.
 - Registry URLs containing credentials, query strings or fragments are rejected.
   Authenticated fetches require host access before a sandboxed build.
-- All retained tarballs are fetched; pnpm filters platform-specific packages
+- All retained tarballs are fetched; native assembly filters platform-specific packages
   during installation. Native modules needing postinstall may not work yet.
 - Large graphs can exhibit pnpm private-hoisting nondeterminism. Exact offline
   comparison and Nix `--check` can report differences between otherwise equivalent

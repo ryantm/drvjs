@@ -1,4 +1,4 @@
-use crate::assemble;
+use crate::pnpm;
 use anyhow::{Context, Result, ensure};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -112,8 +112,8 @@ pub fn verify(directory: &Path, external_store: Option<&Path>) -> Result<()> {
     }
     // Installation records platform-skipped optional packages in .modules.yaml;
     // store status needs that metadata to avoid expecting their absent contents.
-    assemble::install(tmp.path())?;
-    assemble::store_status(tmp.path())?;
+    pnpm::install(tmp.path())?;
+    pnpm::store_status(tmp.path())?;
 
     let actual = snapshot(&directory)?;
     let expected = snapshot(tmp.path())?;

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Alternate assembler experiments on identical inputs and fresh outputs.
-Cases JSON: [{"name":..., "binary":..., "env": {...}}]. Cleanup is excluded.
+Cases JSON: [{"name":..., "binary":..., "args": [...], "env": {...}}]. Cleanup is excluded.
 """
 import argparse, json, os, pathlib, resource, subprocess, tempfile, time
 p=argparse.ArgumentParser(description=__doc__)
@@ -21,7 +21,7 @@ for trial in range(a.runs):
         with tempfile.TemporaryDirectory(prefix='run-',dir=a.out) as scratch:
             output=pathlib.Path(scratch)/'output'
             tarballs=str(case.get('tarballs', a.tarballs))
-            command=[case['binary'],'assemble','--native',str(a.source),str(output),tarballs]
+            command=[case['binary'],'assemble',*case.get('args',[]),str(a.source),str(output),tarballs]
             before=resource.getrusage(resource.RUSAGE_CHILDREN)
             psi_before=pressure()
             with (a.out/f"{case['name']}-{trial}.log").open('w') as log:
