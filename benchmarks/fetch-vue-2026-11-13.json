@@ -1,0 +1,587 @@
+{
+  "platform": "linux",
+  "arch": "x64",
+  "packages": 741,
+  "samples": [
+    {
+      "label": "prepare-fetch-before",
+      "seconds": 18.211070159,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-before",
+        "fetch",
+        "<results>/before",
+        "--all"
+      ],
+      "env": {},
+      "log": "0-prepare-fetch-before.log"
+    },
+    {
+      "label": "prepare-build-before",
+      "seconds": 0.8562405850000032,
+      "exitCode": 0,
+      "command": [
+        "nix-build",
+        "<results>/before",
+        "--no-out-link",
+        "--cores",
+        "4",
+        "--max-jobs",
+        "4"
+      ],
+      "env": {},
+      "log": "1-prepare-build-before.log"
+    },
+    {
+      "label": "prepare-fetch-after",
+      "seconds": 0.0679059350000025,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-after",
+        "fetch",
+        "<results>/after",
+        "--all"
+      ],
+      "env": {},
+      "log": "2-prepare-fetch-after.log"
+    },
+    {
+      "label": "prepare-build-after",
+      "seconds": 0.5855189339999998,
+      "exitCode": 0,
+      "command": [
+        "nix-build",
+        "<results>/after",
+        "--no-out-link",
+        "--cores",
+        "4",
+        "--max-jobs",
+        "4"
+      ],
+      "env": {},
+      "log": "3-prepare-build-after.log"
+    },
+    {
+      "label": "warm-fetch-before",
+      "seconds": 17.830425225,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-before",
+        "fetch",
+        "<results>/before",
+        "--all"
+      ],
+      "env": {},
+      "log": "4-warm-fetch-before.log"
+    },
+    {
+      "label": "source-build-before",
+      "seconds": 5.169527708000001,
+      "exitCode": 0,
+      "command": [
+        "nix-build",
+        "<results>/before",
+        "--no-out-link",
+        "--cores",
+        "4",
+        "--max-jobs",
+        "4"
+      ],
+      "env": {},
+      "log": "5-source-build-before.log"
+    },
+    {
+      "label": "warm-workflow-before",
+      "seconds": 23.001493083,
+      "exitCode": 0
+    },
+    {
+      "label": "warm-fetch-after",
+      "seconds": 0.07242079999999987,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-after",
+        "fetch",
+        "<results>/after",
+        "--all"
+      ],
+      "env": {},
+      "log": "7-warm-fetch-after.log"
+    },
+    {
+      "label": "source-build-after",
+      "seconds": 4.584104769999998,
+      "exitCode": 0,
+      "command": [
+        "nix-build",
+        "<results>/after",
+        "--no-out-link",
+        "--cores",
+        "4",
+        "--max-jobs",
+        "4"
+      ],
+      "env": {},
+      "log": "8-source-build-after.log"
+    },
+    {
+      "label": "warm-workflow-after",
+      "seconds": 4.657900823000004,
+      "exitCode": 0
+    },
+    {
+      "label": "warm-fetch-after",
+      "seconds": 0.08295021600000473,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-after",
+        "fetch",
+        "<results>/after",
+        "--all"
+      ],
+      "env": {},
+      "log": "10-warm-fetch-after.log"
+    },
+    {
+      "label": "source-build-after",
+      "seconds": 6.630065777999996,
+      "exitCode": 0,
+      "command": [
+        "nix-build",
+        "<results>/after",
+        "--no-out-link",
+        "--cores",
+        "4",
+        "--max-jobs",
+        "4"
+      ],
+      "env": {},
+      "log": "11-source-build-after.log"
+    },
+    {
+      "label": "warm-workflow-after",
+      "seconds": 6.714748847000003,
+      "exitCode": 0
+    },
+    {
+      "label": "warm-fetch-before",
+      "seconds": 17.799458365000007,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-before",
+        "fetch",
+        "<results>/before",
+        "--all"
+      ],
+      "env": {},
+      "log": "13-warm-fetch-before.log"
+    },
+    {
+      "label": "source-build-before",
+      "seconds": 4.455124593000001,
+      "exitCode": 0,
+      "command": [
+        "nix-build",
+        "<results>/before",
+        "--no-out-link",
+        "--cores",
+        "4",
+        "--max-jobs",
+        "4"
+      ],
+      "env": {},
+      "log": "14-source-build-before.log"
+    },
+    {
+      "label": "warm-workflow-before",
+      "seconds": 22.255985521000003,
+      "exitCode": 0
+    },
+    {
+      "label": "warm-fetch-before",
+      "seconds": 18.39332165299999,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-before",
+        "fetch",
+        "<results>/before",
+        "--all"
+      ],
+      "env": {},
+      "log": "16-warm-fetch-before.log"
+    },
+    {
+      "label": "source-build-before",
+      "seconds": 4.847152424,
+      "exitCode": 0,
+      "command": [
+        "nix-build",
+        "<results>/before",
+        "--no-out-link",
+        "--cores",
+        "4",
+        "--max-jobs",
+        "4"
+      ],
+      "env": {},
+      "log": "17-source-build-before.log"
+    },
+    {
+      "label": "warm-workflow-before",
+      "seconds": 23.242074810000005,
+      "exitCode": 0
+    },
+    {
+      "label": "warm-fetch-after",
+      "seconds": 0.08187641300000541,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-after",
+        "fetch",
+        "<results>/after",
+        "--all"
+      ],
+      "env": {},
+      "log": "19-warm-fetch-after.log"
+    },
+    {
+      "label": "source-build-after",
+      "seconds": 4.615626872000008,
+      "exitCode": 0,
+      "command": [
+        "nix-build",
+        "<results>/after",
+        "--no-out-link",
+        "--cores",
+        "4",
+        "--max-jobs",
+        "4"
+      ],
+      "env": {},
+      "log": "20-source-build-after.log"
+    },
+    {
+      "label": "warm-workflow-after",
+      "seconds": 4.699585688000006,
+      "exitCode": 0
+    },
+    {
+      "label": "warm-fetch-after",
+      "seconds": 0.07840427299999282,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-after",
+        "fetch",
+        "<results>/after",
+        "--all"
+      ],
+      "env": {},
+      "log": "22-warm-fetch-after.log"
+    },
+    {
+      "label": "source-build-after",
+      "seconds": 5.869590752000004,
+      "exitCode": 0,
+      "command": [
+        "nix-build",
+        "<results>/after",
+        "--no-out-link",
+        "--cores",
+        "4",
+        "--max-jobs",
+        "4"
+      ],
+      "env": {},
+      "log": "23-source-build-after.log"
+    },
+    {
+      "label": "warm-workflow-after",
+      "seconds": 5.949202044000005,
+      "exitCode": 0
+    },
+    {
+      "label": "warm-fetch-before",
+      "seconds": 19.797551622,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-before",
+        "fetch",
+        "<results>/before",
+        "--all"
+      ],
+      "env": {},
+      "log": "25-warm-fetch-before.log"
+    },
+    {
+      "label": "source-build-before",
+      "seconds": 4.961302880000018,
+      "exitCode": 0,
+      "command": [
+        "nix-build",
+        "<results>/before",
+        "--no-out-link",
+        "--cores",
+        "4",
+        "--max-jobs",
+        "4"
+      ],
+      "env": {},
+      "log": "26-source-build-before.log"
+    },
+    {
+      "label": "warm-workflow-before",
+      "seconds": 24.76121226,
+      "exitCode": 0
+    },
+    {
+      "label": "warm-fetch-before",
+      "seconds": 18.729504669999994,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-before",
+        "fetch",
+        "<results>/before",
+        "--all"
+      ],
+      "env": {},
+      "log": "28-warm-fetch-before.log"
+    },
+    {
+      "label": "source-build-before",
+      "seconds": 4.819808524000022,
+      "exitCode": 0,
+      "command": [
+        "nix-build",
+        "<results>/before",
+        "--no-out-link",
+        "--cores",
+        "4",
+        "--max-jobs",
+        "4"
+      ],
+      "env": {},
+      "log": "29-source-build-before.log"
+    },
+    {
+      "label": "warm-workflow-before",
+      "seconds": 23.551320036000018,
+      "exitCode": 0
+    },
+    {
+      "label": "warm-fetch-after",
+      "seconds": 0.07154586399998517,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-after",
+        "fetch",
+        "<results>/after",
+        "--all"
+      ],
+      "env": {},
+      "log": "31-warm-fetch-after.log"
+    },
+    {
+      "label": "source-build-after",
+      "seconds": 4.2367964659999995,
+      "exitCode": 0,
+      "command": [
+        "nix-build",
+        "<results>/after",
+        "--no-out-link",
+        "--cores",
+        "4",
+        "--max-jobs",
+        "4"
+      ],
+      "env": {},
+      "log": "32-source-build-after.log"
+    },
+    {
+      "label": "warm-workflow-after",
+      "seconds": 4.309421429999988,
+      "exitCode": 0
+    },
+    {
+      "label": "cold-fetch-before",
+      "seconds": 115.66220419700001,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-before",
+        "fetch",
+        "<results>/before",
+        "--all"
+      ],
+      "env": {
+        "NIX_REMOTE": "local?root=<results>/cold-0-before"
+      },
+      "log": "34-cold-fetch-before.log"
+    },
+    {
+      "label": "cold-fetch-after",
+      "seconds": 24.88991558600002,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-after",
+        "fetch",
+        "<results>/after",
+        "--all"
+      ],
+      "env": {
+        "NIX_REMOTE": "local?root=<results>/cold-0-after"
+      },
+      "log": "35-cold-fetch-after.log"
+    },
+    {
+      "label": "cold-fetch-after",
+      "seconds": 25.198590564000014,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-after",
+        "fetch",
+        "<results>/after",
+        "--all"
+      ],
+      "env": {
+        "NIX_REMOTE": "local?root=<results>/cold-1-after"
+      },
+      "log": "36-cold-fetch-after.log"
+    },
+    {
+      "label": "cold-fetch-before",
+      "seconds": 112.71552700699999,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-before",
+        "fetch",
+        "<results>/before",
+        "--all"
+      ],
+      "env": {
+        "NIX_REMOTE": "local?root=<results>/cold-1-before"
+      },
+      "log": "37-cold-fetch-before.log"
+    },
+    {
+      "label": "cold-fetch-before",
+      "seconds": 113.356866285,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-before",
+        "fetch",
+        "<results>/before",
+        "--all"
+      ],
+      "env": {
+        "NIX_REMOTE": "local?root=<results>/cold-2-before"
+      },
+      "log": "38-cold-fetch-before.log"
+    },
+    {
+      "label": "cold-fetch-after",
+      "seconds": 24.760405451000086,
+      "exitCode": 0,
+      "command": [
+        "<benchmark>/drvjs-after",
+        "fetch",
+        "<results>/after",
+        "--all"
+      ],
+      "env": {
+        "NIX_REMOTE": "local?root=<results>/cold-2-after"
+      },
+      "log": "39-cold-fetch-after.log"
+    }
+  ],
+  "summary": {
+    "prepare-fetch-before": {
+      "runs": 1,
+      "median": 18.211070159,
+      "min": 18.211070159,
+      "max": 18.211070159
+    },
+    "prepare-build-before": {
+      "runs": 1,
+      "median": 0.8562405850000032,
+      "min": 0.8562405850000032,
+      "max": 0.8562405850000032
+    },
+    "prepare-fetch-after": {
+      "runs": 1,
+      "median": 0.0679059350000025,
+      "min": 0.0679059350000025,
+      "max": 0.0679059350000025
+    },
+    "prepare-build-after": {
+      "runs": 1,
+      "median": 0.5855189339999998,
+      "min": 0.5855189339999998,
+      "max": 0.5855189339999998
+    },
+    "warm-fetch-before": {
+      "runs": 5,
+      "median": 18.39332165299999,
+      "min": 17.799458365000007,
+      "max": 19.797551622
+    },
+    "source-build-before": {
+      "runs": 5,
+      "median": 4.847152424,
+      "min": 4.455124593000001,
+      "max": 5.169527708000001
+    },
+    "warm-workflow-before": {
+      "runs": 5,
+      "median": 23.242074810000005,
+      "min": 22.255985521000003,
+      "max": 24.76121226
+    },
+    "warm-fetch-after": {
+      "runs": 5,
+      "median": 0.07840427299999282,
+      "min": 0.07154586399998517,
+      "max": 0.08295021600000473
+    },
+    "source-build-after": {
+      "runs": 5,
+      "median": 4.615626872000008,
+      "min": 4.2367964659999995,
+      "max": 6.630065777999996
+    },
+    "warm-workflow-after": {
+      "runs": 5,
+      "median": 4.699585688000006,
+      "min": 4.309421429999988,
+      "max": 6.714748847000003
+    },
+    "cold-fetch-before": {
+      "runs": 3,
+      "median": 113.356866285,
+      "min": 112.71552700699999,
+      "max": 115.66220419700001
+    },
+    "cold-fetch-after": {
+      "runs": 3,
+      "median": 24.88991558600002,
+      "min": 24.760405451000086,
+      "max": 25.198590564000014
+    }
+  },
+  "provenance": {
+    "dateUTC": "2026-11-13",
+    "baselineCommit": "1318b9faf39e5b260aa83850c66c3c7fac65c6ad",
+    "referenceRepository": "https://github.com/vuejs/core",
+    "referenceCommit": "5a8aa0b2ba575e098cbb63b396e9bcb751eb3a0f",
+    "cpu": "Intel Xeon Platinum 8581C",
+    "vcpus": 4,
+    "memoryGiB": 12,
+    "rust": "1.100.0",
+    "nix": "2.34.3",
+    "binaryAndSourceSha256": [
+      "a4b62afc5d67353254db414288cab6b7e42080f2d0e437138a0399d58f5e03a2  <benchmark>/drvjs-before",
+      "bf36e73d651120b78461fbae9a4c6d08264069947ef7012d9a8dd36797a07f02  <benchmark>/drvjs-after",
+      "3f75ee3f3fd919735d01077dda6abe2bb77dcaacda7f11667281b063d38b520e  <checkout>/src/fetch.rs"
+    ],
+    "method": "Alternating before/after order. Five warm trials with fresh source-change outputs. Three cold fetch trials with separate empty local Nix stores, each importing 741 archives. Toolchain and helper builds prepared before measurement.",
+    "scope": "The optimized command is drvjs fetch. The combined workflow is fetch --all followed by a source-change nix-build, not bare nix-build. Export, application compilation, lifecycle scripts, remote binary-cache transfers, and physical cold-page-cache behavior are excluded. The existing Vue workspace-link compatibility failure is unchanged."
+  }
+}

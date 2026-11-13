@@ -264,6 +264,46 @@ Already imported tarballs are reused without a download. Binary caches containin
 private package bytes need the same access restrictions as the packages. For
 URL-only packages requiring auth during export, also pass `export --npmrc PATH`.
 
+Host prefetch computes all selected store paths in one Nix evaluation and checks
+their validity in one query. It downloads each missing store path only once,
+using up to four workers by default. `DRVJS_JOBS` requests a different worker count,
+bounded by `NIX_BUILD_CORES` when set or available parallelism otherwise. Every
+download still passes SRI verification before import, and imported paths must
+match the original fixed-output paths. This changes `drvjs fetch`, not Nix's own
+fetcher or the assembly layout.
+
+`benchmarks/fetch.mjs` compares two binaries on identical exported package plans:
+
+```sh
+node benchmarks/fetch.mjs \
+  --before /path/to/before/drvjs --after /path/to/after/drvjs \
+  --before-export /tmp/export-before --after-export /tmp/export-after \
+  --runs 5 --cold-runs 3 --out /tmp/fetch-results
+```
+
+The harness prepares both helpers before timing. It alternates warm-cache host
+fetches and ordinary source-change Nix rebuilds, recording each step and the
+combined workflow. Cold-fetch trials use separate empty local Nix stores without
+deleting the user's cache. Results include every command and timing; cold-fetch
+timings include downloads and import but not assembly. Export, tool compilation,
+application builds, and remote binary-cache transfers are not timed.
+
+On full Vue v3.5.22 (741 archives, 635 installed package instances, 18 importers),
+the [2026-11-13 measurements](benchmarks/fetch-vue-2026-11-13.json) found:
+
+| Measurement | Before | Batched prefetch | Trials per version |
+| --- | ---: | ---: | ---: |
+| Host prefetch, all archives cached | 18.393 s | 0.078 s | 5 |
+| Host prefetch into an empty local Nix store | 113.357 s | 24.890 s | 3 |
+| Cached prefetch plus ordinary source-change Nix rebuild | 23.242 s | 4.700 s | 5 |
+
+These are medians on four x86-64 vCPUs with 12 GiB RAM. Every cold trial imported
+all 741 archives. Cached prefetch replaces 1,482 Nix CLI calls with two; missing
+archives download and import through the bounded worker pool. Bare `nix-build`
+and assembly are unchanged. The existing full-Vue workspace-link verification
+failure remains; these timings do not establish pnpm compatibility for that
+workspace.
+
 Overrides (including root `resolutions`), package extensions, peer rules,
 architecture settings, hoist settings, and declared patches are retained. Only
 patches reachable in a workspace selection are copied. Native assembly applies locked patches and validates the hook checksum.
