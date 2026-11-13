@@ -4,7 +4,7 @@ use anyhow::{Context, Result, bail, ensure};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs,
     io::{Read, Write},
     path::Path,
@@ -163,35 +163,56 @@ pub fn complete_integrities(lock: &mut String, npmrc: Option<&Path>) -> Result<(
 
 pub fn fetch(export: &Path, npmrc: Option<&Path>, all: bool) -> Result<()> {
     let plan: Plan = serde_json::from_slice(&fs::read(export.join("plan.json"))?)?;
-    let mut count = 0;
-    for package in plan.packages {
-        if !all && !package.private {
-            continue;
-        }
+    let packages: Vec<_> = plan
+        .packages
+        .into_iter()
+        .filter(|p| all || p.private)
+        .collect();
+    if packages.is_empty() {
+        println!("Imported 0 verified tarballs into Nix");
+        return Ok(());
+    }
+    let mut input = tempfile::NamedTempFile::new()?;
+    serde_json::to_writer(&mut input, &packages)?;
+    let expected = Command::new("nix-instantiate")
+        .args([
+            "--eval", "--strict", "--json", "--expr",
+            "{ plan }: map (p: (import <nix/fetchurl.nix> { inherit (p) url hash name; }).outPath) (builtins.fromJSON (builtins.readFile plan))",
+            "--argstr", "plan",
+        ])
+        .arg(input.path())
+        .output()?;
+    ensure!(
+        expected.status.success(),
+        "cannot compute Nix fixed-output store paths"
+    );
+    let paths: Vec<String> = serde_json::from_slice(&expected.stdout)?;
+    ensure!(
+        paths.len() == packages.len(),
+        "incomplete Nix fixed-output store paths"
+    );
+    let mut query = tempfile::NamedTempFile::new()?;
+    for path in &paths {
+        writeln!(query, "{path}")?;
+    }
+    // File-backed stdin avoids argument limits and pipe deadlocks on large plans.
+    let validity = Command::new("nix-store")
+        .args(["--check-validity", "--print-invalid", "--stdin"])
+        .stdin(fs::File::open(query.path())?)
+        .output()?;
+    ensure!(validity.status.success(), "cannot query Nix store validity");
+    let invalid: BTreeSet<_> = String::from_utf8(validity.stdout)?
+        .lines()
+        .map(str::to_owned)
+        .collect();
+    let mut seen = BTreeSet::new();
+    let missing: Vec<_> = packages
+        .iter()
+        .zip(&paths)
+        .filter(|(_, path)| invalid.contains(path.as_str()) && seen.insert(path.as_str()))
+        .collect();
+    crate::native_store::parallel_each(&missing, |(package, path)| {
         let algorithm = package.hash.split_once('-').context("invalid SRI")?.0;
-        let digest = package.hash.split_once('-').unwrap().1;
-        let hex = STANDARD
-            .decode(digest)?
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect::<String>();
-        let expected = Command::new("nix-store")
-            .args(["--print-fixed-path", algorithm, &hex, &package.name])
-            .output()?;
-        ensure!(
-            expected.status.success(),
-            "cannot compute Nix fixed-output store path"
-        );
-        let path = String::from_utf8(expected.stdout)?.trim().to_owned();
-        if Command::new("nix-store")
-            .args(["--check-validity", &path])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()?
-            .success()
-        {
-            continue;
-        }
         let tmp = tempfile::tempdir()?;
         let file = tmp.path().join(&package.name);
         download(&package.url, &file, npmrc).with_context(|| format!("fetching {}", package.id))?;
@@ -210,12 +231,12 @@ pub fn fetch(export: &Path, npmrc: Option<&Path>, all: bool) -> Result<()> {
             package.id
         );
         ensure!(
-            String::from_utf8(imported.stdout)?.trim() == path,
+            String::from_utf8(imported.stdout)?.trim() == path.as_str(),
             "unexpected imported store path"
         );
-        count += 1;
-    }
-    println!("Imported {count} verified tarballs into Nix");
+        Ok(())
+    })?;
+    println!("Imported {} verified tarballs into Nix", missing.len());
     Ok(())
 }
 
