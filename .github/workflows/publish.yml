@@ -36,6 +36,8 @@ jobs:
             python3 tests/registry.py
             DRVJS_BIN=$(command -v drvjs) node tests/fetch.mjs
             python3 tests/ci.py
+            python3 tests/incremental.py
+            python3 tests/platforms.py
           '
 
   flakehub:

@@ -13,6 +13,9 @@ for fixture in fixture configured; do
     minimal=$(nix-build "$scratch/$fixture" --no-out-link --arg keepVerificationStore false)
     test ! -e "$minimal/.pnpm-store"
     drvjs verify "$minimal" --store "$result/.pnpm-store"
+    cached=$(nix-build "$scratch/$fixture" --no-out-link --arg keepVerificationStore false --arg cachePackages true)
+    drvjs verify "$cached" --store "$result/.pnpm-store"
+    nix-build "$scratch/$fixture" --no-out-link --arg keepVerificationStore false --arg cachePackages true --check
     nix-store --verify-path "$result"
     prepared=$(nix-build "$scratch/$fixture" --no-out-link --arg zstdArchives true)
     drvjs verify "$prepared"
@@ -33,4 +36,4 @@ JS
     fi
     grep -q 'prepared source integrity mismatch' "$scratch/$fixture-invalid.log"
 done
-echo 'PASS: native gzip, zstd and cache assembly, patches, reproducibility, optional verification store'
+echo 'PASS: native gzip, zstd, package contents and pnpm cache assembly, patches, reproducibility, optional verification store'

@@ -1,0 +1,208 @@
+{
+  "date": "2026-11-13",
+  "project": {
+    "name": "Vue",
+    "revision": "5a8aa0b2ba575e098cbb63b396e9bcb751eb3a0f"
+  },
+  "environment": {
+    "system": "x86_64-linux",
+    "cpu": "Intel Core i7-1280P",
+    "nix": "Determinate Nix 3.24.1 / Nix 2.35.3",
+    "max_jobs": 4,
+    "cores": 4
+  },
+  "method": "Seven alternating warm nix-build --check runs per selection, direct archive assembly before and after. Includes evaluation, assembly, NAR checking and daemon overhead; excludes downloads and Rust compilation. Package caching disabled in both modes. All selected source files and required dependencies are retained. Missing optional platform constraints are learned from verified manifests. Size measurements are NAR bytes, not apparent disk usage.",
+  "selections": {
+    "subset": {
+      "selected_importers": 5,
+      "before": {
+        "output": "/nix/store/8xbj003f1a3dv98mfmsy85wkv357vmi4-drvjs-node-modules",
+        "nar_bytes": 21693320,
+        "runtime_closure_nar_bytes": 21693320,
+        "derivation_bytes": 2012,
+        "rebuild_seconds": [
+          0.5136490808799863,
+          0.5029220420401543,
+          0.5187690700404346,
+          0.48908047401346266,
+          0.4887285439763218,
+          0.5004679809790105,
+          0.4973258029203862
+        ],
+        "median_rebuild_seconds": 0.5004679809790105
+      },
+      "after": {
+        "output": "/nix/store/xavlwprpqrargca256qgv0lfb0f14h7i-drvjs-node-modules",
+        "nar_bytes": 21182376,
+        "runtime_closure_nar_bytes": 21182376,
+        "derivation_bytes": 848,
+        "rebuild_seconds": [
+          0.4742477321997285,
+          0.46198746119625866,
+          0.4641217179596424,
+          0.501137464074418,
+          0.46544044092297554,
+          0.47533480706624687,
+          0.459565503988415
+        ],
+        "median_rebuild_seconds": 0.46544044092297554
+      }
+    },
+    "ci": {
+      "selected_importers": 6,
+      "before": {
+        "output": "/nix/store/nvg884lc3bh15zhbmdjy8hjpax0hprqr-drvjs-node-modules",
+        "nar_bytes": 294628512,
+        "runtime_closure_nar_bytes": 294628512,
+        "derivation_bytes": 2012,
+        "rebuild_seconds": [
+          1.5629066498950124,
+          1.5454520278144628,
+          1.5399836471769959,
+          1.553673043847084,
+          1.521193497814238,
+          1.5275991060771048,
+          1.4943458701018244
+        ],
+        "median_rebuild_seconds": 1.5399836471769959
+      },
+      "after": {
+        "output": "/nix/store/iz86265l4vafj1p5ah7pdgxxpvzkzx1m-drvjs-node-modules",
+        "nar_bytes": 233544192,
+        "runtime_closure_nar_bytes": 233544192,
+        "derivation_bytes": 848,
+        "rebuild_seconds": [
+          1.4182900011073798,
+          1.4484081699047238,
+          1.491882547037676,
+          1.4241364789195359,
+          1.432279307860881,
+          1.5270024279598147,
+          1.4433598998002708
+        ],
+        "median_rebuild_seconds": 1.4433598998002708
+      }
+    },
+    "full": {
+      "selected_importers": 18,
+      "before": {
+        "output": "/nix/store/1504283s8kfvxkxgb1534bi0si60gdc0-drvjs-node-modules",
+        "nar_bytes": 421435112,
+        "runtime_closure_nar_bytes": 421435112,
+        "derivation_bytes": 2012,
+        "rebuild_seconds": [
+          1.8729911639820784,
+          1.874469448812306,
+          1.8896544021554291,
+          1.8735283860005438,
+          1.8629490551538765,
+          1.8741089899558574,
+          1.8784894910641015
+        ],
+        "median_rebuild_seconds": 1.8741089899558574
+      },
+      "after": {
+        "output": "/nix/store/h22ixabc6z8pzmx3xi2bbl3ncwnbkhj6-drvjs-node-modules",
+        "nar_bytes": 360350808,
+        "runtime_closure_nar_bytes": 360350808,
+        "derivation_bytes": 848,
+        "rebuild_seconds": [
+          1.7860618389677256,
+          1.7947643101215363,
+          1.7950043079908937,
+          1.8063865238800645,
+          1.7925603578332812,
+          1.8496013169642538,
+          1.7938174731098115
+        ],
+        "median_rebuild_seconds": 1.7947643101215363
+      }
+    }
+  },
+  "ci_build_inputs_and_compression": {
+    "before": {
+      "derivation": "/nix/store/piq4zf6d5dwr9ppqrniksjvn4yyp6dl0-drvjs-node-modules.drv",
+      "input_roots": [
+        "/nix/store/286nm44xdwicdq00sfdkmng8yfld776f-drvjs-0.1.0-unwrapped",
+        "/nix/store/7gpm9n1mj8rggzlvhkjcxiaafaqwgidi-drvjs-tarballs.json",
+        "/nix/store/byi2zpy2bgcf3dr6y0l8m50rmjj8z7q1-bash-5.3p15",
+        "/nix/store/l622p70vy8k5sh7y5wizi5f2mic6ynpg-source-stdenv.sh",
+        "/nix/store/qqxpljf2s8axp6sql4a68g7f75gdm0c2-project",
+        "/nix/store/shkw4qm9qcw5sc5n1k5jznc83ny02r39-default-builder.sh",
+        "/nix/store/yld1xbwk79r51nqx8q1mmlgzpxx17zwr-stdenv-linux-no-cc"
+      ],
+      "input_paths": 666,
+      "input_nar_bytes": 170098088,
+      "output": "/nix/store/nvg884lc3bh15zhbmdjy8hjpax0hprqr-drvjs-node-modules",
+      "input_zstd_bytes": 103421448,
+      "output_zstd_bytes": 69328842,
+      "output_nar_bytes": 294628512,
+      "output_references": [
+        "/nix/store/nvg884lc3bh15zhbmdjy8hjpax0hprqr-drvjs-node-modules"
+      ]
+    },
+    "after": {
+      "derivation": "/nix/store/9wq3n2v7rfr6bygscyc7si99xq6x5df4-drvjs-node-modules.drv",
+      "input_roots": [
+        "/nix/store/7gpm9n1mj8rggzlvhkjcxiaafaqwgidi-drvjs-tarballs.json",
+        "/nix/store/c5w0v52bmzflb9wfrbbqbfkcm2rbhclr-drvjs-0.1.0-unwrapped",
+        "/nix/store/qqxpljf2s8axp6sql4a68g7f75gdm0c2-project"
+      ],
+      "input_paths": 624,
+      "input_nar_bytes": 136588424,
+      "output": "/nix/store/iz86265l4vafj1p5ah7pdgxxpvzkzx1m-drvjs-node-modules",
+      "input_zstd_bytes": 96156576,
+      "output_zstd_bytes": 50358117,
+      "output_nar_bytes": 233544192,
+      "output_references": [
+        "/nix/store/iz86265l4vafj1p5ah7pdgxxpvzkzx1m-drvjs-node-modules"
+      ]
+    }
+  },
+  "ci_assembler_only": {
+    "baseline": {
+      "seconds": [
+        0.28450489696115255,
+        0.29420603392645717,
+        0.2873248881660402,
+        0.31409737188369036,
+        0.28801231691613793,
+        0.294498932082206,
+        0.29771389183588326
+      ],
+      "median_seconds": 0.29420603392645717
+    },
+    "optimized": {
+      "seconds": [
+        0.28849373501725495,
+        0.29418014199472964,
+        0.28978146496228874,
+        0.30045251711271703,
+        0.2899952798616141,
+        0.29508505086414516,
+        0.28497841604985297
+      ],
+      "median_seconds": 0.2899952798616141
+    }
+  },
+  "exporter_binaries_sha256": {
+    "before": "263221998f6717b843167f5dd9932b9dd0ab54fdf207072b16a57f70f706f2ab",
+    "after": "3d46cdd1b518b4d675449ca198c332b84a5f78c12aec4aeb5f3d60e5f69ab408"
+  },
+  "validation": {
+    "rust_unit_tests": 37,
+    "clippy": "all targets, warnings denied",
+    "pnpm": "10.34.5",
+    "ci_installed_packages": 611,
+    "offline_pnpm_comparison": "passed against the output lockfile with completed optional platform constraints",
+    "native_modules": [
+      "@swc/core TypeScript transform",
+      "rollup/parseAst",
+      "unrs-resolver TypeScript resolution",
+      "@parcel/watcher module load"
+    ],
+    "reproducibility": "all alternating nix-build --check runs passed",
+    "platform_regressions": "tests/platforms.py covers direct, package cache, zstd and retained/external pnpm stores; explicit architectures, locked overrides, shared/required packages, peer contexts and integrity rejection",
+    "nix": "package build and x86_64-linux flake evaluation passed; ARM64 runtime not tested"
+  }
+}

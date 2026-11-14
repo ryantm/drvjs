@@ -119,10 +119,10 @@ pub fn requires_build(manifest: &Value, files: &Value) -> bool {
             .is_some_and(|f| f.keys().any(|k| k.starts_with(".hooks/")))
 }
 pub fn unpack(tarball: &Path, store: &Path, id: &str, integrity: &str) -> Result<Value> {
-    unpack_impl(tarball, store, id, integrity, None, false)
+    unpack_impl(tarball, store, id, integrity, None, false, None)
 }
 pub fn unpack_to(tarball: &Path, target: &Path, id: &str, integrity: &str) -> Result<Value> {
-    unpack_impl(tarball, target, id, integrity, None, true)
+    unpack_impl(tarball, target, id, integrity, None, true, None)
 }
 /// Prepared archives are trusted Nix transformations of an SRI-checked source.
 /// Check the prepared payload separately; pnpm indexes retain the source SRI.
@@ -141,6 +141,37 @@ pub fn unpack_prepared(
         integrity,
         Some(archive_integrity),
         direct,
+        None,
+    )
+}
+/// Inspect authenticated manifest constraints before writing optional packages.
+/// A rejected package returns only its manifest; it creates no files or index.
+pub fn unpack_filtered(
+    tarball: &Path,
+    target: &Path,
+    id: &str,
+    integrity: &str,
+    archive_integrity: Option<&str>,
+    direct: bool,
+    accept: Option<&dyn Fn(&Value) -> bool>,
+) -> Result<Value> {
+    if accept.is_none() {
+        return match (archive_integrity, direct) {
+            (Some(prepared), _) => {
+                unpack_prepared(tarball, target, id, integrity, prepared, direct)
+            }
+            (None, true) => unpack_to(tarball, target, id, integrity),
+            (None, false) => unpack(tarball, target, id, integrity),
+        };
+    }
+    unpack_impl(
+        tarball,
+        target,
+        id,
+        integrity,
+        archive_integrity,
+        direct,
+        accept,
     )
 }
 fn unpack_impl(
@@ -150,6 +181,7 @@ fn unpack_impl(
     integrity: &str,
     archive_integrity: Option<&str>,
     direct: bool,
+    accept: Option<&dyn Fn(&Value) -> bool>,
 ) -> Result<Value> {
     let bytes = fs::read(tarball)?;
     if archive_integrity.is_some() {
@@ -171,18 +203,16 @@ fn unpack_impl(
             .map_err(|_| anyhow::anyhow!("invalid zstd frame"))?;
         if let Some(size) = size.filter(|size| *size <= 256 * 1024 * 1024) {
             let output = zstd::bulk::decompress(&bytes, size as usize)?;
-            let mut archive = tar::Archive::new(std::io::Cursor::new(output.as_slice()));
-            return extract_entries(
-                archive.entries_with_seek()?,
-                Some(&output),
-                store,
-                id,
-                integrity,
-                direct,
-            );
+            return extract_raw(&output, store, id, integrity, direct, accept);
         }
-        let mut archive = tar::Archive::new(zstd::stream::read::Decoder::new(bytes.as_slice())?);
-        return extract_entries(archive.entries()?, None, store, id, integrity, direct);
+        return extract_stream(
+            || Ok(zstd::stream::read::Decoder::new(bytes.as_slice())?),
+            store,
+            id,
+            integrity,
+            direct,
+            accept,
+        );
     }
     // Decode ordinary gzip archives in one bounded buffer. Larger or unusual
     // streams use the existing streaming decoder. SRI is verified above.
@@ -204,29 +234,96 @@ fn unpack_impl(
         None
     };
     if let Some(output) = &expanded {
-        let mut archive = tar::Archive::new(std::io::Cursor::new(output.as_slice()));
-        return extract_entries(
-            archive.entries_with_seek()?,
-            Some(output),
-            store,
-            id,
-            integrity,
-            direct,
-        );
+        return extract_raw(output, store, id, integrity, direct, accept);
     }
     if !bytes.starts_with(&[0x1f, 0x8b]) {
-        let mut archive = tar::Archive::new(std::io::Cursor::new(bytes.as_slice()));
-        return extract_entries(
-            archive.entries_with_seek()?,
-            Some(&bytes),
-            store,
-            id,
-            integrity,
-            direct,
-        );
+        return extract_raw(&bytes, store, id, integrity, direct, accept);
     }
-    let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(bytes.as_slice()));
-    extract_entries(archive.entries()?, None, store, id, integrity, direct)
+    extract_stream(
+        || Ok(flate2::read::GzDecoder::new(bytes.as_slice())),
+        store,
+        id,
+        integrity,
+        direct,
+        accept,
+    )
+}
+
+fn archive_manifest<R: Read>(entries: tar::Entries<'_, R>) -> Result<Value> {
+    let mut manifest = None;
+    for entry in entries {
+        let mut entry = entry?;
+        if !entry.header().entry_type().is_file() {
+            continue;
+        }
+        let path: PathBuf = entry.path()?.components().skip(1).collect();
+        if path == Path::new("package.json") {
+            let mut bytes = Vec::new();
+            entry.read_to_end(&mut bytes)?;
+            manifest = Some(serde_json::from_slice(&bytes)?);
+        }
+    }
+    manifest.context("package.json missing")
+}
+
+fn extract_raw(
+    raw: &[u8],
+    store: &Path,
+    id: &str,
+    integrity: &str,
+    direct: bool,
+    accept: Option<&dyn Fn(&Value) -> bool>,
+) -> Result<Value> {
+    let manifest = if let Some(accept) = accept {
+        let mut archive = tar::Archive::new(std::io::Cursor::new(raw));
+        let manifest = archive_manifest(archive.entries_with_seek()?)?;
+        if !accept(&manifest) {
+            return Ok(json!({"manifest":manifest, "files":{}}));
+        }
+        Some(manifest)
+    } else {
+        None
+    };
+    let mut archive = tar::Archive::new(std::io::Cursor::new(raw));
+    let mut index = extract_entries(
+        archive.entries_with_seek()?,
+        Some(raw),
+        store,
+        id,
+        integrity,
+        direct,
+    )?;
+    if let Some(manifest) = manifest {
+        index["manifest"] = manifest;
+    }
+    Ok(index)
+}
+
+fn extract_stream<R: Read>(
+    reader: impl Fn() -> Result<R>,
+    store: &Path,
+    id: &str,
+    integrity: &str,
+    direct: bool,
+    accept: Option<&dyn Fn(&Value) -> bool>,
+) -> Result<Value> {
+    // The uncommon >256 MiB/streaming fallback scans twice, with bounded memory.
+    let manifest = if let Some(accept) = accept {
+        let mut archive = tar::Archive::new(reader()?);
+        let manifest = archive_manifest(archive.entries()?)?;
+        if !accept(&manifest) {
+            return Ok(json!({"manifest":manifest, "files":{}}));
+        }
+        Some(manifest)
+    } else {
+        None
+    };
+    let mut archive = tar::Archive::new(reader()?);
+    let mut index = extract_entries(archive.entries()?, None, store, id, integrity, direct)?;
+    if let Some(manifest) = manifest {
+        index["manifest"] = manifest;
+    }
+    Ok(index)
 }
 fn extract_entries<R: Read>(
     entries: tar::Entries<'_, R>,
@@ -304,6 +401,12 @@ pub fn manifest(store: &Path, index: &Value) -> Result<Value> {
         store,
         &index["files"]["package.json"],
     )?)?)?)
+}
+pub fn verified_manifest(store: &Path, index: &Value) -> Result<Value> {
+    let info = &index["files"]["package.json"];
+    let bytes = fs::read(content_path(store, info)?)?;
+    verify_bytes(&bytes, info)?;
+    Ok(serde_json::from_slice(&bytes)?)
 }
 /// Bounded independent I/O work. Never creates a thread for every package.
 pub fn parallel_each<T: Sync>(items: &[T], f: impl Fn(&T) -> Result<()> + Sync) -> Result<()> {
@@ -570,6 +673,106 @@ pub fn retain(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn optional_manifest_filter_checks_integrity_before_skipping_and_never_writes_rejected_files() {
+        let root = tempfile::tempdir().unwrap();
+        let mut archive = tar::Builder::new(Vec::new());
+        // Put the manifest last, as binary packages commonly do.
+        for (name, bytes) in [
+            ("package/large.node", vec![7; 1024 * 1024]),
+            (
+                "package/package.json",
+                br#"{"name":"optional","version":"1.0.0","libc":["musl"]}"#.to_vec(),
+            ),
+        ] {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(bytes.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            archive
+                .append_data(&mut header, name, bytes.as_slice())
+                .unwrap();
+        }
+        let tar = archive.into_inner().unwrap();
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+        std::io::Write::write_all(&mut encoder, &tar).unwrap();
+        let gzip = encoder.finish().unwrap();
+        let zstd = zstd::bulk::compress(&tar, 1).unwrap();
+        let reject = |manifest: &Value| manifest["libc"] != json!(["musl"]);
+        for (i, bytes) in [&tar, &gzip, &zstd].into_iter().enumerate() {
+            let path = root.path().join(format!("archive-{i}"));
+            fs::write(&path, bytes).unwrap();
+            let sri = format!("sha512-{}", STANDARD.encode(Sha512::digest(bytes)));
+            let prepared = if i == 2 { Some(sri.as_str()) } else { None };
+            let target = root.path().join(format!("rejected-{i}"));
+            let index = unpack_filtered(
+                &path,
+                &target,
+                "optional@1.0.0",
+                &sri,
+                prepared,
+                true,
+                Some(&reject),
+            )
+            .unwrap();
+            assert_eq!(index["manifest"]["name"], "optional");
+            assert!(!target.exists());
+            let accepted = root.path().join(format!("accepted-{i}"));
+            unpack_filtered(
+                &path,
+                &accepted,
+                "optional@1.0.0",
+                &sri,
+                prepared,
+                true,
+                Some(&|_| true),
+            )
+            .unwrap();
+            assert_eq!(
+                fs::read(accepted.join("large.node")).unwrap(),
+                vec![7; 1024 * 1024]
+            );
+            fs::write(&path, b"corrupt").unwrap();
+            assert!(
+                unpack_filtered(
+                    &path,
+                    &target,
+                    "optional@1.0.0",
+                    &sri,
+                    prepared,
+                    true,
+                    Some(&reject)
+                )
+                .is_err()
+            );
+        }
+        let streaming = root.path().join("streaming");
+        let reader = || Ok(flate2::read::GzDecoder::new(gzip.as_slice()));
+        extract_stream(
+            reader,
+            &streaming,
+            "optional@1.0.0",
+            "unused",
+            true,
+            Some(&reject),
+        )
+        .unwrap();
+        assert!(!streaming.exists());
+        extract_stream(
+            reader,
+            &streaming,
+            "optional@1.0.0",
+            "unused",
+            true,
+            Some(&|_| true),
+        )
+        .unwrap();
+        assert_eq!(
+            fs::read(streaming.join("large.node")).unwrap(),
+            vec![7; 1024 * 1024]
+        );
+    }
 
     fn archive_fixture() -> Vec<u8> {
         use tar::{Builder, Header};

@@ -20,6 +20,7 @@ parser.add_argument('--tarballs', type=pathlib.Path, required=True)
 parser.add_argument('--out', type=pathlib.Path, required=True)
 parser.add_argument('--runs', type=int, default=3)
 parser.add_argument('--baseline-arg', action='append', default=[], help='Extra assembler argument for an older baseline; repeatable')
+parser.add_argument('--optimized-arg', action='append', default=[], help='Extra assembler argument for the optimized path; repeatable')
 args = parser.parse_args()
 if args.runs < 1:
     parser.error('--runs must be positive')
@@ -33,8 +34,7 @@ for trial in range(args.runs):
             command = [shutil.which(getattr(args, mode)) or getattr(args, mode),
                        'assemble', str(args.source.resolve()), str(pathlib.Path(scratch)/'output'),
                        str(args.tarballs.resolve())]
-            if mode == 'baseline':
-                command += args.baseline_arg
+            command += getattr(args, mode + '_arg')
             with (args.out / f'{mode}-{trial}.log').open('w') as log:
                 started = time.monotonic()
                 result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)

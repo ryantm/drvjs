@@ -4,7 +4,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,6 +15,8 @@ struct Lock {
     packages: BTreeMap<String, Value>,
     #[serde(default)]
     patched_dependencies: BTreeMap<String, Value>,
+    #[serde(default)]
+    snapshots: BTreeMap<String, Value>,
 }
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Package {
@@ -31,6 +33,10 @@ pub struct Plan {
     pub packages: Vec<Package>,
     #[serde(rename = "hasPatches", default)]
     pub has_patches: bool,
+    #[serde(default)]
+    pub patches: BTreeMap<String, Value>,
+    #[serde(rename = "targetPackages", default)]
+    pub target_packages: BTreeMap<String, BTreeSet<String>>,
 }
 
 #[cfg(test)]
@@ -129,10 +135,29 @@ pub fn parse_with_registry(input: &str, npmrc: &BTreeMap<String, String>) -> Res
             }
         }
     }
+    let mut patches = BTreeMap::new();
+    for id in lock.snapshots.keys() {
+        let base = crate::native::base_id(id);
+        if let Some(hash) = crate::native::patch_hash(id) {
+            let patch = lock
+                .patched_dependencies
+                .values()
+                .find(|p| p["hash"].as_str() == Some(hash))
+                .context("missing patch declaration")?;
+            patches.insert(
+                format!("{base}(patch_hash={hash})"),
+                serde_json::json!({
+                    "base":base, "hash":hash, "path":patch["path"]
+                }),
+            );
+        }
+    }
     Ok(Plan {
         format: 1,
         packages,
         has_patches: !lock.patched_dependencies.is_empty(),
+        patches,
+        target_packages: BTreeMap::new(),
     })
 }
 

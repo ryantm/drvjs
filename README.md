@@ -5,8 +5,16 @@ A Rust CLI that turns a pnpm lockfile and project manifests into a Nix-built
 
 Each npm tarball is a separate built-in `fetchurl` derivation with the lockfile's SRI
 hash. Nix reuses unchanged downloads locally or through a binary cache.
-Assembly is one derivation per exported selection; it is not yet a derivation
-per installed package or workspace.
+Builds use locked platform constraints to fetch only packages reachable on the
+target Linux architecture, including any additional `supportedArchitectures`
+requested by the project. Missing optional platform constraints are completed
+from verified package manifests during assembly. Those packages still need an
+initial download, but incompatible optional packages and dependencies reachable
+only through them are omitted from the installed tree.
+
+For repeated CI builds, `--cache-packages` also gives each extracted package and
+patched variant a separate reusable Nix output. Final tree assembly remains one
+derivation per exported selection.
 
 ## Try it
 
@@ -21,6 +29,10 @@ nix-build /tmp/project-deps -o result
 # One workspace package, including its workspace and registry dependencies
 nix run . -- export -C /path/to/vue --filter @vue/compiler-sfc -o /tmp/vue-deps
 nix-build /tmp/vue-deps -o result
+
+# Reuse package extraction and patching across CI builds and workspace subsets
+nix run . -- export -C /path/to/project --filter my-app --cache-packages -o /tmp/ci-deps
+nix-build /tmp/ci-deps -o result
 
 # Select a union; explicitly add root tools when needed
 nix run . -- export -C /path/to/vue \
@@ -149,7 +161,8 @@ verification, and Nix reproducibility. `tests/ci.py` checks the sandbox inputs
 exclude pnpm and Node, built-in fetches, and optional iets compatibility.
 
 Native output passed independent pnpm verification for the public Vue compiler-sfc
-subset (98 package instances, 6 importers).
+subset (97 package instances, 6 importers), including a larger selection with
+root CI tools (611 package instances).
 
 The current native path uses libdeflate for gzip archives up to 256 MiB expanded
 per worker, with streaming fallback for larger or unusual streams. It traverses
@@ -157,6 +170,77 @@ memory-backed tar data with seeks and writes borrowed slices, retaining the tar
 parser's support for extended paths. Direct outputs avoid unused per-file store
 metadata and reuse parsed manifests. SRI checks precede extraction; retained
 verification stores still contain complete pnpm metadata.
+
+For optional packages, assembly fills missing `os`, `cpu`, and `libc` constraints
+from integrity-checked package manifests, then recomputes dependency reachability.
+This handles older lockfiles that omit `libc`, avoiding unused musl binaries on
+glibc Linux. Required packages and existing lockfile constraints are preserved;
+explicit `supportedArchitectures` selections remain effective. The output's
+lockfile records the added constraints so independent offline pnpm verification
+uses the same selection. The exported inputs and original checkout are unchanged.
+`tests/platforms.py` covers all assembly modes, optional descendants, shared and
+required packages, peer contexts, explicit architectures, integrity checks, and
+pnpm parity.
+
+### Package contents cache for CI
+
+`drvjs export --cache-packages` opts into package preparation in separate Nix
+derivations. You can also enable it for an export with
+`nix-build EXPORT --arg cachePackages true`. Unchanged package outputs are reused
+across dependency updates and independently exported workspace selections:
+
+- A transitive dependency update prepares the new dependency. Its parent's
+  unchanged archive contents remain cached even when its dependency edges change.
+- Workspace source edits reuse every package output.
+- A patch edit rebuilds that patched variant, reusing the unpatched extraction.
+- Peer instances share the same archive extraction; their dependency links are
+  still assembled in the appropriate peer context.
+
+Preparation verifies the locked tarball digest and patch checksum. Assembly reads
+the resulting immutable Nix inputs, checks their package/integrity/patch identity,
+and copies real files into the normal pnpm layout. It does not rehash or decompress
+those contents. Dependency links, hoists, binaries, frozen validation, and metadata
+are rebuilt for the selected graph. No package lifecycle scripts are executed.
+
+Use `nix-build EXPORT -A contentsManifest -o package-cache` to realize and retain
+the cache without assembling a workspace. The manifest references all package
+outputs; copy its closure to your CI binary cache to preserve them between jobs.
+`packageContents` exposes the individual derivations, keyed by package ID (and
+patch hash for patched variants). These are build inputs; the final copied tree
+does not retain their store paths in its runtime closure. Keeping only the final
+result in a binary cache does not preserve preparation outputs for future
+dependency updates.
+
+This option trades one-time preparation, extra store space, and Nix graph overhead
+for less repeated extraction and patching. It is off by default: small graphs can
+be faster with direct archive assembly. Final assembly still copies package files
+and reconstructs links, so this does not eliminate all work after a dependency
+change. `--arg cachePackages false` restores direct assembly. Retained verification
+stores, `unpackedStore`, and the explicit `zstdArchives` option use their existing
+assembly paths even when package caching is enabled.
+
+The internal `--package-contents` assembler input is trusted Nix-generated cache
+metadata, not a general-purpose untrusted directory cache. Supplied pnpm stores
+continue to receive per-file integrity checks.
+
+Before the manifest-constraint and direct-builder improvements below, seven
+alternating warm `nix-build --check` runs on the pinned Vue checkout gave these
+medians on x86_64 Linux, with the same helper and source in both modes:
+
+| Selection | Package inputs | Direct assembly | Package cache |
+|---|---:|---:|---:|
+| Compiler-sfc subset | 98 | 0.508 s | 0.609 s |
+| Compiler-sfc plus root CI tools (6 of 18 importers) | 615 | 1.625 s | 1.548 s |
+| Full workspace | 635 | 1.936 s | 1.801 s |
+
+The CI subset's assembler-only median fell from 0.296 s to 0.183 s; Nix overhead
+reduces that to about a 5% end-to-end improvement. Initial cache preparation and
+downloads are excluded. The small subset regression is why caching is opt-in.
+These are local measurements, not a prediction for a particular CI runner.
+[Samples and methodology](benchmarks/incremental-2026-11-13.json) are recorded;
+`benchmarks/rebuild.py` reproduces the alternating rebuild comparison.
+`tests/incremental.py` separately checks invalidation after dependency, patch,
+and source changes, reuse across selections, target pruning, and cache closures.
 
 ### Optional zstd archive cache
 
@@ -190,30 +274,38 @@ using your own exported project and already-fetched inputs.
    peer-context snapshots, and used catalog entries. Version specifiers,
    integrity hashes and selected dependency edges are preserved. Declared patches
    are pruned with the selection; root settings and the pnpm hook are retained.
-2. Nix fetches only retained tarballs and verifies their SRI hashes. Unrelated
-   workspace packages are absent from the derivation graph, not merely skipped
-   by a later pnpm command.
+2. Nix fetches retained tarballs reachable under the locked platform constraints
+   and verifies their SRI hashes. Unrelated workspace packages are absent from
+   the derivation graph.
 3. The native assembler validates the projected manifests and lockfile, checks
    every selected archive's SRI hash, and extracts supported packages directly
-   into the isolated virtual store. Peer instances reuse hardlinks.
+   into the isolated virtual store. Peer instances reuse hardlinks. With
+   `--cache-packages`, verification/extraction and patching happen in reusable
+   package derivations before final assembly.
 4. Locked patches are checksum-checked and applied with Git. Native assembly
    then creates dependency/workspace links, hoists, executable shims, and pnpm
    metadata. No registry server, Node process, or pnpm process is started.
-5. Frozen manifest/configuration checks and archive integrity checks run on every
-   assembly. Retaining a verification store is optional; `drvjs verify` performs
+5. Frozen manifest/configuration checks run on every assembly. Archive integrity
+   checks run during extraction (cached by Nix with `--cache-packages`).
+   Retaining a verification store is optional; `drvjs verify` performs
    independent offline pnpm reconstruction and compares the installed tree.
 
-For a single non-workspace project with no filters, the original lockfile bytes
-are preserved unless a URL-only resolution needs an integrity hash. drvjs fetches
-those URLs during export and records SHA-512 in the exported lockfile. Review and
-retain that export to pin the bytes of URLs that have no upstream integrity hash. Workspace exports deliberately contain a **projection**, not a
-byte-identical copy of the complete original lockfile. The original checkout
-is never edited.
+For a single non-workspace project with no filters, the exported lockfile preserves
+the original bytes unless a URL-only resolution needs an integrity hash. drvjs
+fetches those URLs during export and records SHA-512 in the exported lockfile.
+Review and retain that export to pin the bytes of URLs that have no upstream
+integrity hash. Workspace exports deliberately contain a **projection**, not a
+byte-identical copy of the complete original lockfile. The assembled output's
+lockfile can additionally record missing optional platform constraints learned
+from package manifests. The original checkout is never edited.
 
 ## Optional offline verification
 
 Retaining the verification store is **opt-in** because it keeps another copy of
-package contents. To enable it when exporting:
+package contents. It retains the contents of all initially selected packages,
+including those later excluded by manifest platform constraints. This lets it
+seed the original export or a selection requesting additional architectures when
+their packages are available in the store. To enable it when exporting:
 
 ```sh
 drvjs export -C /path/to/project -o /tmp/project-deps --keep-verification-store
@@ -289,7 +381,8 @@ timings include downloads and import but not assembly. Export, tool compilation,
 application builds, and remote binary-cache transfers are not timed.
 
 On full Vue v3.5.22 (741 archives, 635 installed package instances, 18 importers),
-the [2026-11-13 measurements](benchmarks/fetch-vue-2026-11-13.json) found:
+the [2026-11-13 measurements](benchmarks/fetch-vue-2026-11-13.json), taken before
+the platform filtering and direct-builder improvements below, found:
 
 | Measurement | Before | Batched prefetch | Trials per version |
 | --- | ---: | ---: | ---: |
@@ -321,13 +414,16 @@ whose repository declares pnpm 10.17.1. drvjs uses pinned pnpm 10.34.5 with
 automatic package-manager switching disabled. Vue's newer main branch uses
 pnpm 12 split lockfiles, which are not supported yet.
 
-| Selection | Selected importers | Nix tarball fetches | Installed registry packages on Linux |
+| Selection | Selected importers | Nix tarball fetches on x86_64 Linux | Installed registry package instances |
 |---|---:|---:|---:|
-| Whole Vue workspace | 18 | 741 | Not realized in this test |
-| `@vue/compiler-sfc` and dependencies | 5 | 108 | 98 |
+| Whole Vue workspace | 18 | 635 | 631 |
+| `@vue/compiler-sfc` and dependencies | 5 | 98 | 97 |
 | `@vue/reactivity` and dependencies | 2 | 0 | 0 |
 
-The compiler subset eliminates 633 of 741 tarball fetches (85.4%). pnpm also
+Workspace projection retains 108 of 741 locked packages for the compiler subset;
+target filtering further reduces that subset to 98 downloads and manifest
+constraints reduce it to 97 installed packages. The full workspace needs 635
+downloads and installs 631 packages on x86_64 Linux. pnpm also
 sees an empty synthetic root, so it reports six projects for the five selected
 compiler workspaces. These are dependency-count measurements, not timing claims.
 
@@ -357,10 +453,10 @@ substitution remains available.
 
 Tarball fetches use Nix's built-in fetcher, avoiding a curl/stdenv closure for each
 fixed-output derivation. Hashes and output names stay unchanged, so previously
-fetched or host-imported tarballs remain reusable. Assembly uses a separate
-`unwrapped` Rust derivation and a compiler-free build environment. Git is
-included only for selections with locked patches; Node, pnpm, curl, and the Nix
-CLI are absent from the assembly inputs. The default CLI output still provides
+fetched or host-imported tarballs remain reusable. The final derivation invokes
+the separate `unwrapped` Rust executable directly, without shell or stdenv setup.
+Git is included only when assembly must apply locked patches; Node, pnpm, curl,
+and the Nix CLI are absent from the assembly inputs. The default CLI output still provides
 those host tools for exporting, fetching, and independent verification. Its
 wrapper is a separate derivation, so evaluating or building the assembler does
 not require building Node or pnpm.
@@ -369,6 +465,38 @@ not require building Node or pnpm.
 existing project and tarball-manifest inputs. Downloads, export and Nix
 realization overhead should be measured separately. When comparing against an
 older native assembler, pass `--baseline-arg=--native`.
+
+### Speed and output size
+
+The [2026-11-13 speed and size measurements](benchmarks/speed-size-2026-11-13.json)
+compare the previous direct assembler with manifest-based optional platform
+filtering, a direct Rust Nix builder, and bounded executable-header reads. These
+improvements are enabled by default; re-export to include the updated helper.
+The benchmark uses Vue v3.5.22 on an x86_64-linux Intel i7-1280P:
+
+| Selection | Warm rebuild before → after | Output NAR before → after |
+|---|---:|---:|
+| Compiler-sfc subset | 0.500 → 0.465 s | 21.69 → 21.18 MB |
+| Compiler-sfc plus root CI tools | 1.540 → 1.443 s | 294.63 → 233.54 MB |
+| Full workspace | 1.874 → 1.795 s | 421.44 → 360.35 MB |
+
+The CI subset rebuild is about **6% faster**, with a **20.7% smaller output**.
+Its zstd level 3 binary-cache payload falls from **69.33 MB to 50.36 MB** (27.4%).
+The assembly input closure falls from **170.10 MB to 136.59 MB**, and the final
+`.drv` file shrinks from **2,012 to 848 bytes**. All sizes here use decimal MB.
+Output runtime closures contain only the outputs themselves; files have not been
+moved into additional runtime dependencies. The output reduction comes from
+excluding incompatible optional native packages, preserving required packages
+and every file of installed packages.
+
+Timings are medians of seven alternating warm `nix-build --check` runs with four
+cores. They include evaluation, assembly, NAR checking, and daemon overhead;
+downloads, helper compilation, and package-cache preparation are excluded.
+Package caching is disabled in both modes. Assembler-only CI time is nearly
+unchanged (0.294 → 0.290 s). These local measurements do not predict network or
+cold-build timings. All forced rebuilds passed reproducibility checks, and the
+611-package CI output passed independent offline pnpm reconstruction plus native
+module checks for SWC, Rollup, unrs-resolver, and Parcel watcher.
 
 ### CI measurements and iets
 
@@ -506,8 +634,9 @@ but commands that modify dependencies need a writable project/install directory.
 - Git/local-file dependencies, injected workspaces and source symlinks are rejected.
 - Registry URLs containing credentials, query strings or fragments are rejected.
   Authenticated fetches require host access before a sandboxed build.
-- All retained tarballs are fetched; native assembly filters platform-specific packages
-  during installation. Native modules needing postinstall may not work yet.
+- Export records target reachability for x86_64-linux and aarch64-linux. Re-export
+  after dependency or architecture-setting changes. Native modules needing
+  postinstall may not work yet.
 - Large graphs can exhibit pnpm private-hoisting nondeterminism. Exact offline
   comparison and Nix `--check` can report differences between otherwise equivalent
   installs; drvjs does not resolve upstream hoisting nondeterminism.
@@ -532,6 +661,8 @@ PATH="$PWD/result/bin:$PATH" bash tests/native-compat.sh
 PATH="$PWD/result/bin:$PATH" bash tests/native-store-patches.sh
 PATH="$PWD/result/bin:$PATH" bash tests/native-already-applied.sh
 PATH="$PWD/result/bin:$PATH" python3 tests/registry.py
+PATH="$PWD/result/bin:$PATH" python3 tests/incremental.py
+PATH="$PWD/result/bin:$PATH" python3 tests/platforms.py
 ```
 
 Set `PNPM_COMPAT_BIN=/path/to/pnpm-10.6.1/bin/pnpm.cjs` for the native

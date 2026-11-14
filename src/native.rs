@@ -17,8 +17,14 @@ struct Package {
     children: Edges,
     requires_build: bool,
 }
-fn base_id(id: &str) -> &str {
+pub fn base_id(id: &str) -> &str {
     id.split('(').next().unwrap()
+}
+pub fn patch_hash(id: &str) -> Option<&str> {
+    id.strip_prefix(base_id(id))?
+        .strip_prefix("(patch_hash=")?
+        .split(')')
+        .next()
 }
 fn name(id: &str) -> Result<&str> {
     let i = id[1..].find('@').context("invalid package identity")? + 1;
@@ -143,12 +149,7 @@ fn patterns(value: &Value, default: &[&str]) -> Vec<String> {
         })
         .unwrap_or_else(|| default.iter().map(|s| s.to_string()).collect())
 }
-fn supported(package: &Value, settings: &Value) -> bool {
-    let arch = match std::env::consts::ARCH {
-        "x86_64" => "x64",
-        "aarch64" => "arm64",
-        s => s,
-    };
+fn supported(package: &Value, settings: &Value, arch: &str) -> bool {
     for (key, current) in [("os", "linux"), ("cpu", arch), ("libc", "glibc")] {
         let Some(values) = package[key].as_array() else {
             continue;
@@ -178,6 +179,16 @@ fn supported(package: &Value, settings: &Value) -> bool {
         }
     }
     true
+}
+fn with_manifest_constraints(metadata: &Value, manifest: &Value) -> Value {
+    let mut result = metadata.clone();
+    for key in ["os", "cpu", "libc"] {
+        // Recorded lock metadata (including hook overrides) remains authoritative.
+        if result.get(key).is_none() && manifest[key].is_array() {
+            result[key] = manifest[key].clone();
+        }
+    }
+    result
 }
 fn read_json(p: &Path) -> Result<Value> {
     Ok(serde_json::from_slice(
@@ -366,13 +377,95 @@ fn validate(root: &Path, lock: &Value) -> Result<()> {
     }
     Ok(())
 }
+// Export and assembly share exactly the same platform and reachability rules.
+fn skipped_packages(lock: &Value, settings: &Value, arch: &str) -> Result<BTreeSet<String>> {
+    let empty = json!({});
+    let snapshot = lock
+        .get("snapshots")
+        .unwrap_or(&empty)
+        .as_object()
+        .context("invalid snapshots")?;
+    let package_metadata = lock
+        .get("packages")
+        .unwrap_or(&empty)
+        .as_object()
+        .context("invalid packages")?;
+    let mut skipped = BTreeSet::new();
+    for (id, meta) in package_metadata {
+        if !supported(meta, settings, arch) {
+            for s in snapshot.keys().filter(|s| base_id(s) == id) {
+                skipped.insert(s.clone());
+            }
+        }
+    }
+    // Optional packages reachable only through an incompatible platform package
+    // are skipped too; they need not be present in a host-specific seed store.
+    let mut reachable = BTreeSet::new();
+    let mut todo = VecDeque::new();
+    for importer in lock["importers"]
+        .as_object()
+        .context("missing importers")?
+        .values()
+    {
+        todo.extend(dependencies(importer, true).into_values());
+    }
+    while let Some(id) = todo.pop_front() {
+        if id.starts_with("link:") || skipped.contains(&id) || !reachable.insert(id.clone()) {
+            continue;
+        }
+        let package = snapshot
+            .get(&id)
+            .with_context(|| format!("missing snapshot: {id}"))?;
+        todo.extend(dependencies(package, false).into_values());
+    }
+    skipped.extend(
+        snapshot
+            .keys()
+            .filter(|id| !reachable.contains(*id))
+            .cloned(),
+    );
+    Ok(skipped)
+}
+
+pub fn target_packages(source: &Path) -> Result<BTreeMap<String, BTreeSet<String>>> {
+    let lock: Value = serde_yaml_ng::from_slice(&fs::read(source.join("pnpm-lock.yaml"))?)?;
+    let (settings, _, _) = settings(source)?;
+    let mut targets = BTreeMap::new();
+    for (system, arch) in [("x86_64-linux", "x64"), ("aarch64-linux", "arm64")] {
+        let skipped = skipped_packages(&lock, &settings, arch)?;
+        let ids = lock["snapshots"]
+            .as_object()
+            .into_iter()
+            .flat_map(|s| s.keys())
+            .filter(|id| !skipped.contains(*id))
+            // Cached patches are independent variants. An active unpatched base
+            // does not imply that every patched snapshot of it is reachable.
+            .flat_map(|id| {
+                let base = base_id(id);
+                std::iter::once(base.to_owned())
+                    .chain(patch_hash(id).map(|hash| format!("{base}(patch_hash={hash})")))
+            })
+            .collect();
+        targets.insert(system.into(), ids);
+    }
+    Ok(targets)
+}
+
 pub fn assemble(
     source: &Path,
     out: &Path,
     tarballs: &Path,
     keep: bool,
     cache: Option<&Path>,
+    package_contents: Option<&Path>,
 ) -> Result<()> {
+    ensure!(
+        package_contents.is_none() || (!keep && cache.is_none()),
+        "package contents cannot be combined with pnpm verification stores"
+    );
+    let contents = package_contents
+        .map(crate::package_cache::Contents::load)
+        .transpose()?;
     let phase = std::time::Instant::now();
     ensure!(!out.exists(), "output already exists");
     fs::create_dir(out)?;
@@ -393,42 +486,18 @@ pub fn assemble(
         .unwrap_or(&empty)
         .as_object()
         .context("invalid packages")?;
-    let mut skipped = BTreeSet::new();
-    for (id, meta) in package_metadata {
-        if !supported(meta, &settings) {
-            for s in snapshot.keys().filter(|s| base_id(s) == id) {
-                skipped.insert(s.clone());
-            }
-        }
-    }
-    // Optional packages reachable only through an incompatible platform package
-    // are skipped too; they need not be present in a host-specific seed store.
-    let mut reachable = BTreeSet::new();
-    let mut todo = VecDeque::new();
-    for importer in lock["importers"].as_object().unwrap().values() {
-        todo.extend(dependencies(importer, true).into_values());
-    }
-    while let Some(id) = todo.pop_front() {
-        if id.starts_with("link:") || skipped.contains(&id) || !reachable.insert(id.clone()) {
-            continue;
-        }
-        let package = snapshot
-            .get(&id)
-            .with_context(|| format!("missing snapshot: {id}"))?;
-        todo.extend(dependencies(package, false).into_values());
-    }
-    skipped.extend(
-        snapshot
-            .keys()
-            .filter(|id| !reachable.contains(*id))
-            .cloned(),
-    );
+    let arch = match std::env::consts::ARCH {
+        "x86_64" => "x64",
+        "aarch64" => "arm64",
+        arch => arch,
+    };
+    let skipped = skipped_packages(&lock, &settings, arch)?;
     let scratch = tempfile::tempdir_in(&out)?;
     let local_store = scratch.path().join("store");
     let cache = cache
         .map(Path::to_path_buf)
         .unwrap_or_else(|| local_store.clone());
-    let sources: Vec<Value> = if cache == local_store {
+    let sources: Vec<Value> = if cache == local_store && contents.is_none() {
         serde_json::from_slice(&fs::read(tarballs)?)?
     } else {
         Vec::new()
@@ -444,6 +513,11 @@ pub fn assemble(
         .filter(|id| !skipped.contains(*id))
         .map(|id| base_id(id))
         .collect();
+    let mut optional = BTreeMap::new();
+    for (id, snap) in snapshot {
+        let entry = optional.entry(base_id(id)).or_insert(true);
+        *entry &= snap["optional"].as_bool().unwrap_or(false);
+    }
     let inputs: Vec<_> = package_metadata
         .iter()
         .filter(|(id, _)| active.contains(id.as_str()))
@@ -476,35 +550,60 @@ pub fn assemble(
         let integrity = meta["resolution"]["integrity"]
             .as_str()
             .context("missing integrity")?;
-        let index = if cache == local_store {
+        let inspect = optional.get(id.as_str()) == Some(&true);
+        let accept = |manifest: &Value| {
+            supported(&with_manifest_constraints(meta, manifest), &settings, arch)
+        };
+        let index = if let Some(contents) = &contents {
+            let (source, index) = contents.get(id, integrity, None)?;
+            // A patched-only base needs metadata but no unpatched file copy.
+            if !direct_dirs[*id].starts_with(scratch.path())
+                && (!inspect || accept(&index["manifest"]))
+            {
+                store::materialize_directory(&source, &index, &direct_dirs[*id], false)?;
+            }
+            index
+        } else if cache == local_store {
             let source = sources
                 .get(id.as_str())
                 .with_context(|| format!("missing tarball: {id}"))?;
             let file = Path::new(source["file"].as_str().context("missing archive file")?);
             let target = if direct { &direct_dirs[*id] } else { &cache };
-            if let Some(prepared) = source.get("archiveIntegrity") {
+            let prepared = if let Some(prepared) = source.get("archiveIntegrity") {
                 ensure!(
                     source["sourceIntegrity"].as_str() == Some(integrity),
                     "prepared source integrity mismatch: {id}"
                 );
-                store::unpack_prepared(
-                    file,
-                    target,
-                    id,
-                    integrity,
+                Some(
                     prepared
                         .as_str()
                         .context("invalid prepared archive integrity")?,
-                    direct,
-                )?
-            } else if direct {
-                store::unpack_to(file, target, id, integrity)?
+                )
             } else {
-                store::unpack(file, target, id, integrity)?
-            }
+                None
+            };
+            store::unpack_filtered(
+                file,
+                target,
+                id,
+                integrity,
+                prepared,
+                direct,
+                // A retained pnpm store must stay complete enough to seed this
+                // same exported lockfile, which may omit the learned constraints.
+                if inspect && direct {
+                    Some(&accept)
+                } else {
+                    None
+                },
+            )?
         } else {
-            read_json(&store::index_path(&cache, id, integrity)?)
-                .with_context(|| format!("missing or invalid cached package: {id}"))?
+            let mut index = read_json(&store::index_path(&cache, id, integrity)?)
+                .with_context(|| format!("missing or invalid cached package: {id}"))?;
+            // A corrupted external manifest must not hide its package by claiming
+            // an incompatible platform and thereby bypassing materialization checks.
+            index["manifest"] = store::verified_manifest(&cache, &index)?;
+            index
         };
         loaded
             .lock()
@@ -519,17 +618,33 @@ pub fn assemble(
     for (id, index) in &mut indexes {
         manifests.insert(
             id.clone(),
-            std::sync::Arc::new(if direct {
-                index
-                    .as_object_mut()
-                    .unwrap()
-                    .remove("manifest")
-                    .context("missing manifest")?
-            } else {
-                store::manifest(&cache, index)?
-            }),
+            std::sync::Arc::new(
+                if let Some(manifest) = index.as_object_mut().unwrap().remove("manifest") {
+                    manifest
+                } else {
+                    store::manifest(&cache, index)?
+                },
+            ),
         );
     }
+    // Some v9 lockfiles omit libc even though the authenticated package manifest
+    // declares it. Supplement only optional packages; preserve required packages
+    // and the project's explicitly requested supportedArchitectures.
+    let mut complete_lock = lock.clone();
+    for (id, manifest) in &manifests {
+        if optional.get(id.as_str()) == Some(&true) {
+            complete_lock["packages"][id] =
+                with_manifest_constraints(&package_metadata[id], manifest);
+        }
+    }
+    let skipped = skipped_packages(&complete_lock, &settings, arch)?;
+    if complete_lock != lock {
+        fs::write(
+            out.join("pnpm-lock.yaml"),
+            serde_yaml_ng::to_string(&complete_lock)?,
+        )?;
+    }
+    let lock = complete_lock;
     eprintln!(
         "drvjs native: load/unpack {:.3}s",
         phase.elapsed().as_secs_f64()
@@ -550,11 +665,7 @@ pub fn assemble(
             .join("node_modules")
             .join(name(base)?);
         let mut patch = None;
-        if let Some(hash) = id
-            .strip_prefix(base)
-            .and_then(|s| s.strip_prefix("(patch_hash="))
-            .and_then(|s| s.split(')').next())
-        {
+        if let Some(hash) = patch_hash(id) {
             let declaration = lock["patchedDependencies"]
                 .as_object()
                 .context("missing patch declarations")?
@@ -575,7 +686,13 @@ pub fn assemble(
         );
     }
     store::parallel_each(&materializations, |(base, index, dir, patch)| {
-        if direct {
+        if let (Some(contents), Some(declaration)) = (&contents, patch) {
+            let integrity = package_metadata[*base]["resolution"]["integrity"]
+                .as_str()
+                .context("missing integrity")?;
+            let (source, index) = contents.get(base, integrity, declaration["hash"].as_str())?;
+            store::materialize_directory(&source, &index, dir, false)?;
+        } else if direct {
             store::materialize_directory(&direct_dirs[*base], index, dir, patch.is_none())?;
         } else {
             store::materialize(
@@ -586,7 +703,7 @@ pub fn assemble(
                 cache == local_store && patch.is_none(),
             )?;
         }
-        if let Some(declaration) = patch {
+        if let Some(declaration) = patch.filter(|_| contents.is_none()) {
             if cache != local_store {
                 store::patch_cached(&out, dir, declaration, base)?;
             } else {
@@ -595,6 +712,17 @@ pub fn assemble(
         }
         Ok(())
     })?;
+    // A newly incompatible optional parent can make otherwise compatible
+    // descendants unreachable. Delete any early direct copies after peer copies
+    // have finished, since an active peer may share their original base files.
+    if direct {
+        for id in &skipped {
+            let dir = virtual_store.join(filename(id));
+            if dir.exists() {
+                fs::remove_dir_all(dir)?;
+            }
+        }
+    }
     eprintln!(
         "drvjs native: integrity/materialize/patch {:.3}s",
         phase.elapsed().as_secs_f64()
@@ -994,7 +1122,16 @@ fn link_bins(
             used.insert(name.clone(), priority);
             fs::create_dir_all(bin)?;
             store::make_executable(&file)?;
-            let content = fs::read(&file)?;
+            use std::io::Read;
+            let mut content = Vec::new();
+            fs::File::open(&file)?
+                .take(4096)
+                .read_to_end(&mut content)?;
+            ensure!(
+                content.len() < 4096 || !content.starts_with(b"#!") || content.contains(&b'\n'),
+                "executable shebang exceeds 4096 bytes: {}",
+                file.display()
+            );
             let first = std::str::from_utf8(content.split(|b| *b == b'\n').next().unwrap_or(&[]))
                 .unwrap_or("");
             let runtime = shebang.captures(first.trim());
@@ -1061,6 +1198,56 @@ fn link_bins(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn target_closure_respects_architectures_and_skipped_transitive_dependencies() {
+        let lock = json!({
+            "importers": {".": {"optionalDependencies": {
+                "x64-only": {"version":"1.0.0"}, "arm-only": {"version":"1.0.0"}
+            }}},
+            "packages": {"x64-only@1.0.0":{"cpu":["x64"]},
+                "arm-only@1.0.0":{"cpu":["arm64"]}, "child@1.0.0":{}},
+            "snapshots": {"x64-only@1.0.0":{"dependencies":{"child":"1.0.0"}},
+                "arm-only@1.0.0":{}, "child@1.0.0":{}}
+        });
+        assert_eq!(
+            skipped_packages(&lock, &json!({}), "x64").unwrap(),
+            BTreeSet::from(["arm-only@1.0.0".into()])
+        );
+        assert_eq!(
+            skipped_packages(&lock, &json!({}), "arm64").unwrap(),
+            BTreeSet::from(["x64-only@1.0.0".into(), "child@1.0.0".into()])
+        );
+        let settings = json!({"supportedArchitectures":{"cpu":["current","x64"]}});
+        assert!(
+            skipped_packages(&lock, &settings, "arm64")
+                .unwrap()
+                .is_empty()
+        );
+        assert!(!supported(&json!({"os":["!linux"]}), &json!({}), "x64"));
+        assert!(!supported(&json!({"libc":["musl"]}), &json!({}), "x64"));
+        assert!(supported(&json!({"os":["any"]}), &json!({}), "arm64"));
+        let mut lock = lock;
+        lock["snapshots"]["arm-only@1.0.0"] =
+            json!({"dependencies":{"child":"1.0.0(patch_hash=abc)"}});
+        lock["snapshots"]["child@1.0.0(patch_hash=abc)"] = json!({});
+        let root = tempfile::tempdir().unwrap();
+        fs::write(root.path().join("package.json"), "{\"name\":\"targets\"}").unwrap();
+        fs::write(root.path().join("pnpm-lock.yaml"), lock.to_string()).unwrap();
+        let targets = target_packages(root.path()).unwrap();
+        assert_eq!(
+            targets["x86_64-linux"],
+            BTreeSet::from(["x64-only@1.0.0".into(), "child@1.0.0".into()])
+        );
+        assert_eq!(
+            targets["aarch64-linux"],
+            BTreeSet::from([
+                "arm-only@1.0.0".into(),
+                "child@1.0.0".into(),
+                "child@1.0.0(patch_hash=abc)".into()
+            ])
+        );
+    }
 
     #[test]
     fn peer_instances_and_url_aliases_keep_their_identity() {

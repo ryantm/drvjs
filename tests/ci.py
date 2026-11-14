@@ -93,6 +93,8 @@ with tempfile.TemporaryDirectory(prefix='drvjs-ci-') as scratch:
             assert builder == 'builtin:fetchurl', builder
             inputs = eval_nix(f'map toString ({expr}).nativeBuildInputs')
             assert len(inputs) == 1 and inputs[0].endswith('-unwrapped'), inputs
+            assert eval_nix(f'({expr}).builder') == inputs[0] + '/bin/drvjs'
+            assert eval_nix(f'builtins.head ({expr}).args') == 'assemble'
             drv = eval_nix(f'({expr}).drvPath')
             if args.iets:
                 env = dict(os.environ, IETS_NIX_FALLBACK='never', IETS_PROGRESS='false')

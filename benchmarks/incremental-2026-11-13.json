@@ -1,0 +1,195 @@
+{
+  "date": "2026-11-13",
+  "project": {
+    "name": "Vue",
+    "revision": "5a8aa0b2ba575e098cbb63b396e9bcb751eb3a0f"
+  },
+  "environment": {
+    "system": "x86_64-linux",
+    "cpu": "Intel Core i7-1280P",
+    "nix": "Determinate Nix 3.24.1 / Nix 2.35.3",
+    "max_jobs": 4,
+    "cores": 4
+  },
+  "method": "Seven alternating nix-build --check rebuilds per mode, same current helper and projected source, all archives and package contents prepared before timing. Includes evaluation, assembly, NAR checking and daemon overhead. Excludes downloads and initial cache preparation. before=cachePackages false; after=cachePackages true.",
+  "rebuilds": {
+    "compiler-sfc": {
+      "selected_importers": 5,
+      "locked_packages": 108,
+      "target_package_inputs": 98,
+      "direct": {
+        "seconds": [
+          0.5294657368212938,
+          0.49362962786108255,
+          0.5080524450168014,
+          0.5069155530072749,
+          0.5571307048667222,
+          0.5301488600671291,
+          0.5063793389126658
+        ],
+        "median_seconds": 0.5080524450168014,
+        "median_phases_seconds": {
+          "plan": 0.008,
+          "load/unpack": 0.027,
+          "integrity/materialize/patch": 0.001,
+          "links/bins": 0.01
+        }
+      },
+      "cached": {
+        "seconds": [
+          0.6163491480983794,
+          0.6149625501129776,
+          0.5896484600380063,
+          0.5965230250731111,
+          0.6090698430780321,
+          0.6037059950176626,
+          0.6169045530259609
+        ],
+        "median_seconds": 0.6090698430780321,
+        "median_phases_seconds": {
+          "plan": 0.006,
+          "load/unpack": 0.011,
+          "integrity/materialize/patch": 0.001,
+          "links/bins": 0.008
+        }
+      }
+    },
+    "compiler-sfc-plus-root-tools": {
+      "selected_importers": 6,
+      "locked_packages": 721,
+      "target_package_inputs": 615,
+      "direct": {
+        "seconds": [
+          1.6249587228521705,
+          1.6061544939875603,
+          1.6336832900997251,
+          1.6896285961847752,
+          1.5765567850321531,
+          1.625300242099911,
+          1.5754309541080147
+        ],
+        "median_seconds": 1.6249587228521705,
+        "median_phases_seconds": {
+          "plan": 0.013,
+          "load/unpack": 0.291,
+          "integrity/materialize/patch": 0.002,
+          "links/bins": 0.056
+        }
+      },
+      "cached": {
+        "seconds": [
+          1.5478612720035017,
+          1.56209896504879,
+          1.5661507560871542,
+          1.5406835908070207,
+          1.6675142969470471,
+          1.5314245929475874,
+          1.5374374631792307
+        ],
+        "median_seconds": 1.5478612720035017,
+        "median_phases_seconds": {
+          "plan": 0.014,
+          "load/unpack": 0.1,
+          "integrity/materialize/patch": 0.002,
+          "links/bins": 0.052
+        }
+      }
+    },
+    "full-workspace": {
+      "selected_importers": 18,
+      "locked_packages": 741,
+      "target_package_inputs": 635,
+      "direct": {
+        "seconds": [
+          1.944033153122291,
+          1.9364705360494554,
+          1.9821470458991826,
+          1.9609660210553557,
+          1.9224681190680712,
+          1.90691684698686,
+          1.89446830493398
+        ],
+        "median_seconds": 1.9364705360494554,
+        "median_phases_seconds": {
+          "plan": 0.021,
+          "load/unpack": 0.378,
+          "integrity/materialize/patch": 0.002,
+          "links/bins": 0.052
+        }
+      },
+      "cached": {
+        "seconds": [
+          1.800459167920053,
+          1.8268639571033418,
+          1.8731626099906862,
+          1.7885603860486299,
+          1.8087612150702626,
+          1.7972323650028557,
+          1.801198384957388
+        ],
+        "median_seconds": 1.801198384957388,
+        "median_phases_seconds": {
+          "plan": 0.021,
+          "load/unpack": 0.137,
+          "integrity/materialize/patch": 0.002,
+          "links/bins": 0.05
+        }
+      }
+    }
+  },
+  "assembler_only": {
+    "selection": "compiler-sfc-plus-root-tools",
+    "method": "Seven alternating drvjs assemble runs per mode on identical projected source. Immutable inputs are already realized; cleanup is outside timing. Excludes Nix evaluation, downloads, compilation and NAR registration. Default worker budget (four).",
+    "results": {
+      "direct": {
+        "seconds": [
+          0.2965260229539126,
+          0.2962716119363904,
+          0.29606565297581255,
+          0.4330560299567878,
+          0.2962645480874926,
+          0.29199655214324594,
+          0.2918773100245744
+        ],
+        "median_seconds": 0.2962645480874926
+      },
+      "cached": {
+        "seconds": [
+          0.1776664189528674,
+          0.18305647699162364,
+          0.17754657100886106,
+          0.24487894494086504,
+          0.19238338991999626,
+          0.16779565112665296,
+          0.25999617320485413
+        ],
+        "median_seconds": 0.18305647699162364
+      }
+    }
+  },
+  "validation": {
+    "unit_tests_passed": 36,
+    "pnpm_verification_version": "10.34.5",
+    "integration_suites": [
+      "incremental",
+      "cache-closure",
+      "integration",
+      "configured",
+      "unpacked",
+      "native",
+      "native-compat",
+      "native-store-patches",
+      "native-already-applied",
+      "registry",
+      "ci",
+      "vue-test"
+    ],
+    "direct_cached_tree_parity": {
+      "method": "Compare every file digest, executable mode and symlink target, normalizing only the output-root prefix. No directory symlinks are followed.",
+      "compiler-sfc": 1943,
+      "compiler-sfc-plus-root-tools": 18376,
+      "full-workspace": 21652
+    },
+    "cross_selection_reuse": "All 615 CI-subset package contents derivations are identical to their full-workspace counterparts."
+  }
+}

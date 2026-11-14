@@ -2,6 +2,7 @@ mod config;
 mod fetch;
 mod native;
 mod native_store;
+mod package_cache;
 mod plan;
 mod pnpm;
 mod verify;
@@ -43,6 +44,9 @@ enum Commands {
         /// Cache zstd-normalized archives in Nix (experimental).
         #[arg(long)]
         zstd_archives: bool,
+        /// Cache extracted packages independently for repeated CI builds.
+        #[arg(long)]
+        cache_packages: bool,
     },
     /// Import authenticated tarballs into Nix without storing credentials.
     Fetch {
@@ -71,6 +75,23 @@ enum Commands {
         /// Experimental: seed installation from a compatible retained pnpm store.
         #[arg(long)]
         unpacked_store: Option<PathBuf>,
+        /// Internal manifest of immutable, Nix-built package contents.
+        #[arg(long)]
+        package_contents: Option<PathBuf>,
+    },
+    #[command(hide = true)]
+    PreparePackage {
+        archive: PathBuf,
+        out: PathBuf,
+        id: String,
+        integrity: String,
+    },
+    #[command(hide = true)]
+    PatchPackage {
+        source: PathBuf,
+        out: PathBuf,
+        patch: PathBuf,
+        hash: String,
     },
 }
 
@@ -81,13 +102,14 @@ fn export(
     npmrc: Option<&Path>,
     keep_verification_store: bool,
     zstd_archives: bool,
+    cache_packages: bool,
 ) -> Result<()> {
     let project = project.canonicalize()?;
     let lock = fs::read_to_string(project.join("pnpm-lock.yaml"))?;
     let mut selection = workspace::select(&project, &lock, filters)?;
     fetch::complete_integrities(&mut selection.lock, npmrc)?;
     let settings = config::npmrc(&project)?;
-    let plan = plan::parse_with_registry(&selection.lock, &settings)?;
+    let mut plan = plan::parse_with_registry(&selection.lock, &settings)?;
     ensure!(
         !out.exists(),
         "export destination already exists: {}",
@@ -101,6 +123,7 @@ fn export(
     fs::create_dir_all(parent)?;
     let stage = tempfile::tempdir_in(parent)?;
     workspace::write_project(&project, &stage.path().join("project"), &selection)?;
+    plan.target_packages = native::target_packages(&stage.path().join("project"))?;
     fs::write(
         stage.path().join("plan.json"),
         serde_json::to_vec_pretty(&plan)?,
@@ -108,7 +131,7 @@ fn export(
     fs::write(
         stage.path().join("options.json"),
         serde_json::to_vec_pretty(
-            &serde_json::json!({"keepVerificationStore": keep_verification_store, "zstdArchives": zstd_archives}),
+            &serde_json::json!({"keepVerificationStore": keep_verification_store, "zstdArchives": zstd_archives, "cachePackages": cache_packages}),
         )?,
     )?;
     fs::write(
@@ -127,6 +150,7 @@ fn export(
         ("src/pnpm.rs", include_str!("pnpm.rs")),
         ("src/native.rs", include_str!("native.rs")),
         ("src/native_store.rs", include_str!("native_store.rs")),
+        ("src/package_cache.rs", include_str!("package_cache.rs")),
         ("src/native_shim.txt", include_str!("native_shim.txt")),
         ("src/verify.rs", include_str!("verify.rs")),
         ("src/workspace.rs", include_str!("workspace.rs")),
@@ -137,7 +161,7 @@ fn export(
     }
     fs::rename(stage.path(), out)?;
     println!(
-        "Exported {} workspace importers and {} package fetches to {}",
+        "Exported {} workspace importers and {} locked packages to {}",
         selection.importers.len(),
         plan.packages.len(),
         out.display()
@@ -154,6 +178,7 @@ fn main() {
             npmrc,
             keep_verification_store,
             zstd_archives,
+            cache_packages,
         } => export(
             &directory,
             &out,
@@ -161,6 +186,7 @@ fn main() {
             npmrc.as_deref(),
             keep_verification_store,
             zstd_archives,
+            cache_packages,
         ),
         Commands::Fetch {
             directory,
@@ -174,13 +200,27 @@ fn main() {
             tarballs,
             keep_verification_store,
             unpacked_store,
+            package_contents,
         } => native::assemble(
             &source,
             &out,
             &tarballs,
             keep_verification_store,
             unpacked_store.as_deref(),
+            package_contents.as_deref(),
         ),
+        Commands::PreparePackage {
+            archive,
+            out,
+            id,
+            integrity,
+        } => package_cache::prepare(&archive, &out, &id, &integrity),
+        Commands::PatchPackage {
+            source,
+            out,
+            patch,
+            hash,
+        } => package_cache::patch(&source, &out, &patch, &hash),
     };
     if let Err(error) = result.context("drvjs failed") {
         eprintln!("{error:#}");
